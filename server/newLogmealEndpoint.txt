@@ -1,0 +1,5 @@
+  // Import enhanced LogMeal handler
+  const { handleLogMealDetection } = require('./logmealEndpoint');
+  
+  // LogMeal API endpoint for food detection
+  app.post("/api/detect-foods-logmeal", handleLogMealDetection);

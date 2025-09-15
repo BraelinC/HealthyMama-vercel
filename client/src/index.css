@@ -1,0 +1,340 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Calendar styles for date highlighting - Multiple selectors for maximum compatibility */
+.rdp-day_selected,
+.rdp-day_range_start,
+.rdp-day_range_end,
+button[data-selected="true"],
+button[role="gridcell"][aria-selected="true"] {
+  background-color: hsl(270 91% 65%) !important;
+  color: white !important;
+  border: 2px solid hsl(270 91% 65%) !important;
+  border-radius: 6px !important;
+  font-weight: bold !important;
+}
+
+.rdp-day_range_middle,
+button[data-range-middle="true"] {
+  background-color: hsl(270 91% 65% / 0.2) !important;
+  color: hsl(240 10% 3.9%) !important;
+  border: 1px solid hsl(270 91% 65% / 0.5) !important;
+  border-radius: 6px !important;
+}
+
+.rdp-day_today:not(.rdp-day_selected):not(.rdp-day_range_start):not(.rdp-day_range_end),
+button[data-today="true"]:not([data-selected="true"]) {
+  background-color: hsl(142 70% 35% / 0.2) !important;
+  color: hsl(142 70% 35%) !important;
+  border: 2px solid hsl(142 70% 35%) !important;
+  border-radius: 6px !important;
+  font-weight: bold !important;
+}
+
+/* Make sure all calendar days have visible boundaries */
+.rdp-day,
+button[role="gridcell"] {
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+  min-height: 36px !important;
+  min-width: 36px !important;
+}
+
+.rdp-day:hover:not(.rdp-day_selected):not(.rdp-day_disabled),
+button[role="gridcell"]:hover:not([aria-selected="true"]):not([disabled]) {
+  border: 1px solid hsl(270 91% 65% / 0.3) !important;
+  background-color: hsl(270 91% 65% / 0.05) !important;
+}
+
+/* Ensure calendar container has proper styling */
+.rdp {
+  --rdp-cell-size: 36px;
+  --rdp-accent-color: hsl(270 91% 65%);
+  --rdp-background-color: hsl(0 0% 100%);
+  --rdp-accent-color-dark: hsl(270 91% 55%);
+  --rdp-background-color-dark: hsl(240 10% 3.9%);
+  --rdp-outline: 2px solid var(--rdp-accent-color);
+  --rdp-outline-selected: 2px solid var(--rdp-accent-color);
+}
+
+/* Force visibility for all calendar buttons */
+.rdp button {
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  height: 36px;
+  width: 36px;
+  transition: all 0.2s ease;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 3.9%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    
+    --primary: 270 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 142 70% 35%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 270 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 142 70% 35%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5 {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+  }
+}
+
+/* Mobile-friendly calendar styles */
+@media (max-width: 768px) {
+  .rdp {
+    --rdp-cell-size: 35px;
+    margin: 0;
+  }
+  
+  .rdp-months {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .rdp-month {
+    width: 100%;
+    margin: 0 0 1rem 0;
+  }
+  
+  .rdp-table {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+  }
+  
+  .rdp-head_cell, .rdp-cell {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
+  }
+  
+  .rdp-button {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
+  }
+}
+
+/* YOLOv8 Detection Loading Animations */
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  50% {
+    transform: translateY(100px);
+  }
+  100% {
+    transform: translateY(200%);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(50px);
+    opacity: 0;
+  }
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float linear infinite;
+}
+
+/* Meal Plan Editor Sidebar Collapse Styles */
+[data-meal-plan-editor] .w-80 {
+  transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+  transform: translateX(-100%); /* Start collapsed */
+}
+
+[data-meal-plan-editor]:not(.sidebar-collapsed) .w-80 {
+  transform: translateX(0); /* Show when not collapsed */
+}
+
+[data-meal-plan-editor].sidebar-collapsed .w-80 {
+  transform: translateX(-100%);
+}
+
+[data-meal-plan-editor].sidebar-collapsed .flex-1 {
+  margin-left: 0;
+}
+
+/* Button animation when sidebar collapses */
+[data-meal-plan-editor] button[title="Toggle course list"] {
+  transition: transform 0.3s ease-in-out;
+}
+
+[data-meal-plan-editor]:not(.sidebar-collapsed) button[title="Toggle course list"] {
+  transform: rotate(180deg);
+}
+
+/* Mobile responsiveness for meal plan editor */
+@media (max-width: 768px) {
+  [data-meal-plan-editor] .w-80 {
+    width: 320px;
+    max-width: 320px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+  }
+  
+  [data-meal-plan-editor] .flex-1 {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* Desktop responsiveness */
+@media (min-width: 769px) {
+  [data-meal-plan-editor] .w-80 {
+    width: 320px;
+    max-width: 320px;
+    position: relative;
+    z-index: 20;
+  }
+  
+  [data-meal-plan-editor] .flex-1 {
+    margin-left: 0;
+    width: calc(100% - 320px);
+  }
+  
+  [data-meal-plan-editor]:not(.sidebar-collapsed) .flex-1 {
+    margin-left: 320px;
+    width: calc(100% - 320px);
+  }
+}
+
+/* Add overlay when sidebar is open on mobile */
+@media (max-width: 768px) {
+  [data-meal-plan-editor]:not(.sidebar-collapsed)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 320px;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    pointer-events: auto;
+  }
+  
+  /* Initially hide overlay since sidebar starts collapsed */
+  [data-meal-plan-editor]::before {
+    display: none;
+  }
+  
+  [data-meal-plan-editor]:not(.sidebar-collapsed)::before {
+    display: block;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}

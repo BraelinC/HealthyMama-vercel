@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthy Mama - Preview Functionality Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            color: #6366f1;
+            margin-bottom: 10px;
+        }
+        .preview-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .preview-section h2 {
+            color: #374151;
+            margin-top: 0;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .feature-card h3 {
+            color: #6366f1;
+            margin-top: 0;
+        }
+        .code-sample {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .status.working {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .status.pending {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ Healthy Mama Preview Functionality</h1>
+            <p>Advanced AI-powered recipe and meal planning platform with intelligent preview features</p>
+        </div>
+
+        <div class="preview-section">
+            <h2>📋 Current Preview Features Available</h2>
+            
+            <div class="feature-list">
+                <div class="feature-card">
+                    <h3>🔍 Profile Prompt Preview</h3>
+                    <p>Shows exactly how your profile data builds intelligent meal generation prompts</p>
+                    <div class="status working">✅ Fully Implemented</div>
+                    <p><strong>Location:</strong> Profile page → "Meal Generation Prompt Preview" section</p>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Step-by-step prompt construction visualization</li>
+                        <li>Goal-optimized requirements display</li>
+                        <li>Weight-based priority system preview</li>
+                        <li>Cultural cuisine integration preview</li>
+                        <li>Real-time cultural cache status</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>⚖️ Weight-Based Planning Preview</h3>
+                    <p>Interactive preview of how priority weights affect meal selection</p>
+                    <div class="status working">✅ Advanced Implementation</div>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Visual priority weight display (0-1 scale)</li>
+                        <li>Conflict resolution examples</li>
+                        <li>Dominant priority identification</li>
+                        <li>Smart ingredient overlap analysis</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🌍 Cultural Cuisine Preview</h3>
+                    <p>Real-time preview of cultural meal integration</p>
+                    <div class="status working">✅ Cache-Powered</div>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Cultural cuisine data visualization</li>
+                        <li>Authenticity scoring preview</li>
+                        <li>Regional meal suggestions</li>
+                        <li>Cache optimization status</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>👨‍👩‍👧‍👦 Family Member Preview</h3>
+                    <p>Shows how family member data affects meal planning</p>
+                    <div class="status working">✅ Multi-Profile Support</div>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Individual preference aggregation</li>
+                        <li>Age-appropriate meal adjustments</li>
+                        <li>Dietary restriction handling</li>
+                        <li>Serving size calculations</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎯 Goal Achievement Preview</h3>
+                    <p>Visualizes how meals align with health and lifestyle goals</p>
+                    <div class="status working">✅ Achievement System</div>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Goal progress tracking</li>
+                        <li>Nutrition focus alignment</li>
+                        <li>Achievement milestone preview</li>
+                        <li>Real-time notifications</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🔄 Real-Time Meal Testing</h3>
+                    <p>Interactive meal ranking and optimization testing</p>
+                    <div class="status working">✅ Advanced Testing</div>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Cultural meal ranking tests</li>
+                        <li>Processing time optimization</li>
+                        <li>Score-based meal comparison</li>
+                        <li>Ranking explanation generation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h2>🚀 How to Access Preview Features</h2>
+            <ol>
+                <li><strong>Start the application:</strong> Run the "Start application" workflow</li>
+                <li><strong>Navigate to Profile:</strong> Click the Profile link in the navigation</li>
+                <li><strong>View Prompt Preview:</strong> Look for "Meal Generation Prompt Preview" card</li>
+                <li><strong>Toggle Visibility:</strong> Click "Show/Hide Prompt Building" button</li>
+                <li><strong>Test Features:</strong> Use the cultural meal ranking tests</li>
+            </ol>
+        </div>
+
+        <div class="preview-section">
+            <h2>🔧 Current Server Status</h2>
+            <div class="status pending">⚠️ Server compilation issues preventing startup</div>
+            <p>The application has advanced preview functionality but currently has TypeScript compilation errors in:</p>
+            <ul>
+                <li>server/vite.ts - async/await syntax issue</li>
+                <li>server/routes.ts - multiple type safety issues</li>
+            </ul>
+            <p><strong>Resolution needed:</strong> Fix server compilation errors to access full preview functionality</p>
+        </div>
+
+        <div class="preview-section">
+            <h2>💡 Preview Architecture</h2>
+            <div class="code-sample">
+// Key Preview Components:
+- ProfilePromptPreview.tsx: Main preview interface
+- Cultural cache system: Real-time cuisine data
+- Weight-based planning: Priority optimization
+- Achievement system: Progress tracking
+- Family profile system: Multi-user support
+
+// Preview Data Flow:
+User Profile → Prompt Builder → AI Optimization → Preview Display
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h2>🎨 Preview UI Components</h2>
+            <p>The preview system uses modern React components with:</p>
+            <ul>
+                <li><strong>Collapsible sections:</strong> Step-by-step prompt revelation</li>
+                <li><strong>Real-time status:</strong> Cultural cache and processing updates</li>
+                <li><strong>Interactive testing:</strong> Meal ranking with live results</li>
+                <li><strong>Visual priority display:</strong> Weight-based decision making</li>
+                <li><strong>Responsive design:</strong> Mobile and desktop optimized</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

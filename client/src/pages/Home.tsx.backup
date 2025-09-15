@@ -1,0 +1,636 @@
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { safeApiRequest } from "@/lib/queryClient";
+import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import { 
+  ChefHat,
+  Loader2,
+  Edit,
+  Save,
+  Plus,
+  Trash2,
+  Calendar,
+  Clock,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  ShoppingCart,
+  BookOpen,
+  Activity,
+  Search,
+  GripVertical
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+
+interface Meal {
+  title: string;
+  cook_time_minutes: number;
+  difficulty: number;
+  ingredients: string[];
+  instructions: string[];
+  nutrition?: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  };
+}
+
+interface DayMeals {
+  breakfast?: Meal;
+  lunch?: Meal;
+  dinner?: Meal;
+  snack?: Meal;
+}
+
+interface MealPlan {
+  id: number;
+  name: string;
+  description: string;
+  mealPlan: { [key: string]: DayMeals };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export default function Home() {
+  const [editingMeal, setEditingMeal] = useState<{ dayKey: string; mealType: string; meal: Meal } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<MealPlan | null>(null);
+  const [editingPlanName, setEditingPlanName] = useState(false);
+  const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
+  
+  // Optimize meal expansion to prevent unnecessary re-renders
+  const handleMealClick = (dayKey: string, mealType: string) => {
+    if (!isEditing) {
+      const mealId = `${dayKey}-${mealType}`;
+      setExpandedMeal(prev => prev === mealId ? null : mealId);
+    }
+  };
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Query for the most recent meal plan
+  const { data: mostRecentPlan, isLoading } = useQuery({
+    queryKey: ['/api/meal-plans/saved'],
+    queryFn: async () => {
+      try {
+        const result = await safeApiRequest('/api/meal-plans/saved');
+        const plans = Array.isArray(result) ? result : [];
+        return plans.length > 0 ? plans[0] : null;
+      } catch (error) {
+        console.error('Error fetching meal plans:', error);
+        return null;
+      }
+    },
+    retry: false,
+  });
+
+  // Set current plan when data loads
+  useEffect(() => {
+    if (mostRecentPlan) {
+      setCurrentPlan(mostRecentPlan);
+    }
+  }, [mostRecentPlan]);
+
+  // Update meal plan mutation
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ planId, planData }: { planId: number; planData: any }) => {
+      return await safeApiRequest(`/api/meal-plans/${planId}`, {
+        method: 'PUT',
+        body: JSON.stringify(planData)
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Meal plan updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/meal-plans/saved'] });
+      setIsEditing(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update meal plan",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSavePlan = () => {
+    if (!currentPlan) return;
+    
+    updatePlanMutation.mutate({
+      planId: currentPlan.id,
+      planData: {
+        name: currentPlan.name,
+        description: currentPlan.description,
+        meal_plan: currentPlan.mealPlan
+      }
+    });
+  };
+
+  const handleEditMeal = (dayKey: string, mealType: string, meal: Meal) => {
+    setEditingMeal({ dayKey, mealType, meal: { ...meal } });
+  };
+
+  const handleSaveMeal = () => {
+    if (!editingMeal || !currentPlan) return;
+    
+    const updatedPlan = { ...currentPlan };
+    updatedPlan.mealPlan[editingMeal.dayKey][editingMeal.mealType as keyof DayMeals] = editingMeal.meal;
+    setCurrentPlan(updatedPlan);
+    setEditingMeal(null);
+    setIsEditing(true);
+  };
+
+  const handleDeleteMeal = (dayKey: string, mealType: string) => {
+    if (!currentPlan) return;
+    
+    const updatedPlan = { ...currentPlan };
+    delete updatedPlan.mealPlan[dayKey][mealType as keyof DayMeals];
+    setCurrentPlan(updatedPlan);
+    setIsEditing(true);
+  };
+
+  const handleAddMeal = (dayKey: string, mealType: string) => {
+    const newMeal: Meal = {
+      title: `New ${mealType}`,
+      cook_time_minutes: 30,
+      difficulty: 3,
+      ingredients: ["Add ingredients here"],
+      instructions: ["Add cooking instructions here"]
+    };
+    
+    handleEditMeal(dayKey, mealType, newMeal);
+  };
+
+  const getDayCount = (mealPlan: { [key: string]: DayMeals }) => {
+    return Object.keys(mealPlan).length;
+  };
+
+  const getMealCount = (mealPlan: { [key: string]: DayMeals }) => {
+    return Object.values(mealPlan).reduce((total, dayMeals) => {
+      return total + Object.values(dayMeals).filter(Boolean).length;
+    }, 0);
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || !currentPlan || !isEditing) {
+      return;
+    }
+
+    const { source, destination } = result;
+    
+    // Parse the draggable ID to get source day and meal type
+    const [sourceDayKey, sourceMealType] = source.droppableId.split('-');
+    const [destDayKey, destMealType] = destination.droppableId.split('-');
+    
+    if (sourceDayKey === destDayKey && sourceMealType === destMealType) {
+      return; // No change
+    }
+
+    const updatedPlan = { ...currentPlan };
+    const sourceMeal = updatedPlan.mealPlan[sourceDayKey][sourceMealType as keyof DayMeals];
+    
+    if (sourceMeal) {
+      // Remove from source
+      delete updatedPlan.mealPlan[sourceDayKey][sourceMealType as keyof DayMeals];
+      
+      // Add to destination (this will overwrite if there's already a meal there)
+      updatedPlan.mealPlan[destDayKey][destMealType as keyof DayMeals] = sourceMeal;
+      
+      setCurrentPlan(updatedPlan);
+      setIsEditing(true); // Mark as having changes
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 flex items-center justify-center">
+        <Card className="p-8">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading your meal plan...</span>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!currentPlan) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <ChefHat className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-xl font-semibold mb-2">No Meal Plans Yet</h2>
+          <p className="text-muted-foreground mb-4">
+            Create your first meal plan using the Meal Planner page
+          </p>
+          <Button onClick={() => window.location.href = '/meal-planner'}>
+            Create Meal Plan
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Your Meal Plan</h1>
+              <p className="text-muted-foreground">Edit and manage your current meal plan</p>
+            </div>
+          </div>
+
+          {/* Plan Header */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  {editingPlanName ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={currentPlan.name}
+                        onChange={(e) => setCurrentPlan({...currentPlan, name: e.target.value})}
+                        className="text-2xl font-semibold"
+                        placeholder="Plan name"
+                      />
+                      <Input
+                        value={currentPlan.description || ''}
+                        onChange={(e) => setCurrentPlan({...currentPlan, description: e.target.value})}
+                        placeholder="Plan description (optional)"
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          size="default" 
+                          onClick={() => setEditingPlanName(false)}
+                          style={{ background: 'linear-gradient(to right, #50C878, #45B369)' }}
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Changes
+                        </Button>
+                        <Button 
+                          size="default" 
+                          variant="outline" 
+                          onClick={() => setEditingPlanName(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <CardTitle className="text-2xl">{currentPlan.name}</CardTitle>
+                      {currentPlan.description && (
+                        <CardDescription className="text-base">{currentPlan.description}</CardDescription>
+                      )}
+                      <div className="flex gap-4 text-sm text-muted-foreground">
+                        <span>{getDayCount(currentPlan.mealPlan)} days</span>
+                        <span>{getMealCount(currentPlan.mealPlan)} meals</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {!editingPlanName && (
+                  <Button
+                    size="lg"
+                    variant={isEditing ? "default" : "outline"}
+                    onClick={() => {
+                      if (isEditing) {
+                        setIsEditing(false);
+                      } else {
+                        setEditingPlanName(true);
+                        setIsEditing(true);
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                    style={isEditing ? { background: 'linear-gradient(to right, #2563eb, #1d4ed8)' } : { borderColor: '#2563eb', color: '#2563eb' }}
+                  >
+                    <Edit className="w-5 h-5" />
+                    {isEditing ? "Stop Editing" : "Edit Plan"}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Meal Plan Editor - All Days Expanded */}
+          <div className="space-y-6">
+            {Object.entries(currentPlan.mealPlan)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([dayKey, dayMeals]) => (
+              <Card key={dayKey}>
+                <CardHeader>
+                  <CardTitle className="text-xl capitalize flex items-center gap-2">
+                    <Calendar className="w-5 h-5" style={{ color: '#50C878' }} />
+                    {dayKey.replace('_', ' ')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {['breakfast', 'lunch', 'dinner'].map((mealType) => {
+                      const meal = dayMeals[mealType as keyof DayMeals];
+                      return (
+                        <Card key={mealType} className="bg-muted/30">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-sm capitalize">{mealType}</CardTitle>
+                              <div className="flex gap-1">
+                                {meal && isEditing && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleEditMeal(dayKey, mealType, meal)}
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleDeleteMeal(dayKey, mealType)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            {meal ? (
+                              <div className="space-y-2">
+                                <div 
+                                  className={`cursor-pointer ${!isEditing ? 'hover:bg-muted/20 p-2 rounded -m-2' : ''}`}
+                                  onClick={() => handleMealClick(dayKey, mealType)}
+                                >
+                                  <h4 className="font-medium text-sm">{meal.title}</h4>
+                                  <div className="flex gap-2 text-xs">
+                                    <Badge variant="outline">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {meal.cook_time_minutes}m
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      Difficulty: {meal.difficulty}/5
+                                    </Badge>
+                                  </div>
+                                  {meal.nutrition && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {meal.nutrition.calories} cal
+                                    </div>
+                                  )}
+                                  {!isEditing && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                      <span>Click to view details</span>
+                                      {expandedMeal === `${dayKey}-${mealType}` ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Expanded meal details */}
+                                {!isEditing && expandedMeal === `${dayKey}-${mealType}` && (
+                                  <div className="mt-4 p-4 bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg space-y-4 border border-primary/20 shadow-sm">
+                                    {/* Header with Search Button */}
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="font-semibold text-lg text-primary">Recipe Details</h4>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs border-emerald-500 text-emerald-600 hover:bg-emerald-50"
+                                        onClick={() => {
+                                          // Create smart search prompt with meal name and key ingredients
+                                          const mainIngredients = meal.ingredients?.slice(0, 3).join(', ') || '';
+                                          const searchQuery = `${meal.title} recipe with ${mainIngredients}`;
+                                          // Navigate to search page with pre-filled query
+                                          window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+                                        }}
+                                      >
+                                        <Search className="w-3 h-3 mr-1" />
+                                        Find
+                                      </Button>
+                                    </div>
+                                    
+                                    {/* Ingredients */}
+                                    <div>
+                                      <h5 className="font-bold text-base mb-3 flex items-center gap-2 text-emerald-600 border-b border-emerald-200 pb-1">
+                                        <ShoppingCart className="w-4 h-4 text-emerald-500" />
+                                        <span className="underline decoration-emerald-400 decoration-2">Ingredients</span>
+                                      </h5>
+                                      <ul className="text-sm space-y-2">
+                                        {meal.ingredients?.map((ingredient, idx) => (
+                                          <li key={idx} className="flex items-start gap-2 p-1 rounded hover:bg-emerald-50/50">
+                                            <span className="text-emerald-500 font-bold">•</span>
+                                            <span className="text-gray-700">{ingredient}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                    
+                                    {/* Instructions */}
+                                    <div>
+                                      <h5 className="font-bold text-base mb-3 flex items-center gap-2 text-purple-600 border-b border-purple-200 pb-1">
+                                        <BookOpen className="w-4 h-4 text-purple-500" />
+                                        <span className="underline decoration-purple-400 decoration-2">Instructions</span>
+                                      </h5>
+                                      <ol className="text-sm space-y-2">
+                                        {meal.instructions?.map((instruction, idx) => (
+                                          <li key={idx} className="flex items-start gap-3 p-2 rounded hover:bg-purple-50/50">
+                                            <span className="bg-purple-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                                            <span className="text-gray-700">{instruction}</span>
+                                          </li>
+                                        ))}
+                                      </ol>
+                                    </div>
+                                    
+                                    {/* Nutrition */}
+                                    {meal.nutrition && (
+                                      <div>
+                                        <h5 className="font-bold text-base mb-3 flex items-center gap-2 text-blue-600 border-b border-blue-200 pb-1">
+                                          <Activity className="w-4 h-4 text-blue-500" />
+                                          <span className="underline decoration-blue-400 decoration-2">Nutrition (per serving)</span>
+                                        </h5>
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                          <div className="flex justify-between items-center p-2 bg-orange-50 rounded border-l-2 border-orange-400">
+                                            <span className="text-orange-700 font-medium">Calories:</span>
+                                            <span className="font-bold text-orange-600">{meal.nutrition.calories}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center p-2 bg-red-50 rounded border-l-2 border-red-400">
+                                            <span className="text-red-700 font-medium">Protein:</span>
+                                            <span className="font-bold text-red-600">{meal.nutrition.protein_g}g</span>
+                                          </div>
+                                          <div className="flex justify-between items-center p-2 bg-yellow-50 rounded border-l-2 border-yellow-400">
+                                            <span className="text-yellow-700 font-medium">Carbs:</span>
+                                            <span className="font-bold text-yellow-600">{meal.nutrition.carbs_g}g</span>
+                                          </div>
+                                          <div className="flex justify-between items-center p-2 bg-pink-50 rounded border-l-2 border-pink-400">
+                                            <span className="text-pink-700 font-medium">Fat:</span>
+                                            <span className="font-bold text-pink-600">{meal.nutrition.fat_g}g</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              isEditing && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full border-dashed"
+                                  onClick={() => handleAddMeal(dayKey, mealType)}
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Add {mealType}
+                                </Button>
+                              )
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Meal Editor Modal */}
+          {editingMeal && (
+            <Card className="border-2 border-primary fixed inset-4 z-50 bg-background overflow-auto">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Edit {editingMeal.mealType} - {editingMeal.dayKey.replace('_', ' ')}</CardTitle>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveMeal}>Save</Button>
+                    <Button variant="outline" onClick={() => setEditingMeal(null)}>Cancel</Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Recipe Title</label>
+                  <Input
+                    value={editingMeal.meal.title}
+                    onChange={(e) => setEditingMeal({
+                      ...editingMeal,
+                      meal: { ...editingMeal.meal, title: e.target.value }
+                    })}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Cook Time (minutes)</label>
+                    <Input
+                      type="number"
+                      value={editingMeal.meal.cook_time_minutes}
+                      onChange={(e) => setEditingMeal({
+                        ...editingMeal,
+                        meal: { ...editingMeal.meal, cook_time_minutes: parseInt(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Difficulty (1-5)</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={editingMeal.meal.difficulty}
+                      onChange={(e) => setEditingMeal({
+                        ...editingMeal,
+                        meal: { ...editingMeal.meal, difficulty: parseInt(e.target.value) || 1 }
+                      })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ingredients (one per line)</label>
+                  <Textarea
+                    rows={6}
+                    value={editingMeal.meal.ingredients.join('\n')}
+                    onChange={(e) => setEditingMeal({
+                      ...editingMeal,
+                      meal: { ...editingMeal.meal, ingredients: e.target.value.split('\n').filter(Boolean) }
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Instructions (one per line)</label>
+                  <Textarea
+                    rows={6}
+                    value={editingMeal.meal.instructions.join('\n')}
+                    onChange={(e) => setEditingMeal({
+                      ...editingMeal,
+                      meal: { ...editingMeal.meal, instructions: e.target.value.split('\n').filter(Boolean) }
+                    })}
+                  />
+                </div>
+
+                {editingMeal.meal.nutrition && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Nutrition (optional)</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Calories</label>
+                        <Input
+                          type="number"
+                          value={editingMeal.meal.nutrition.calories}
+                          onChange={(e) => setEditingMeal({
+                            ...editingMeal,
+                            meal: { 
+                              ...editingMeal.meal, 
+                              nutrition: { 
+                                ...editingMeal.meal.nutrition!, 
+                                calories: parseInt(e.target.value) || 0 
+                              }
+                            }
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Protein (g)</label>
+                        <Input
+                          type="number"
+                          value={editingMeal.meal.nutrition.protein_g}
+                          onChange={(e) => setEditingMeal({
+                            ...editingMeal,
+                            meal: { 
+                              ...editingMeal.meal, 
+                              nutrition: { 
+                                ...editingMeal.meal.nutrition!, 
+                                protein_g: parseInt(e.target.value) || 0 
+                              }
+                            }
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

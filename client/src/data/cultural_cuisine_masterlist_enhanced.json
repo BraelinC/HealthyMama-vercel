@@ -1,0 +1,304 @@
+{
+  "schema_version": "2.0.0",
+  "last_updated": "2025-07-18",
+  "total_cuisines": 30,
+  "description": "Enhanced cultural cuisine taxonomy with rich metadata for improved matching and recommendations",
+  "cuisines": [
+    {
+      "id": "southern-us",
+      "label": "Southern US",
+      "aliases": ["Soul Food", "African-American Southern", "Southern Comfort Food", "Creole", "Cajun"],
+      "metadata": {
+        "origin": {
+          "primary_region": "Southern United States",
+          "countries": ["United States"],
+          "geographic_tags": ["North America", "Southeast US", "Gulf Coast"]
+        },
+        "characteristics": {
+          "flavor_profile": ["hearty", "comfort", "rich", "spicy", "smoky"],
+          "cooking_methods": ["frying", "slow-cooking", "smoking", "braising", "grilling"],
+          "key_ingredients": ["cornmeal", "okra", "collard greens", "black-eyed peas", "andouille sausage", "roux"],
+          "signature_dishes": ["fried chicken", "gumbo", "jambalaya", "mac and cheese", "cornbread", "biscuits and gravy"]
+        },
+        "dietary_info": {
+          "common_restrictions": ["can be adapted for vegetarian", "traditionally meat-heavy"],
+          "allergen_considerations": ["dairy", "gluten", "shellfish in some dishes"],
+          "health_adaptations": ["can reduce oil/butter", "increase vegetables", "lean protein substitutions"]
+        },
+        "cultural_context": {
+          "historical_significance": "Fusion of African, Native American, and European traditions",
+          "celebration_foods": ["Easter ham", "Thanksgiving sides", "Christmas cookies"],
+          "family_traditions": "Sunday dinners, church potlucks, holiday gatherings"
+        },
+        "searchability": {
+          "popularity_score": 8.5,
+          "difficulty_level": "medium",
+          "availability_score": 9.0,
+          "keywords": ["comfort food", "american", "traditional", "hearty", "family", "home cooking"]
+        }
+      },
+      "related_cuisines": ["Caribbean", "Portuguese", "French", "West African"],
+      "fusion_potential": ["Korean-Southern", "Mexican-Southern", "Italian-Southern"],
+      "regional_variations": [
+        {
+          "name": "Louisiana Creole",
+          "description": "French and Spanish influences with local seafood",
+          "signature_dishes": ["gumbo", "étouffée", "beignets"]
+        },
+        {
+          "name": "Texas BBQ",
+          "description": "Beef-focused with German and Mexican influences", 
+          "signature_dishes": ["brisket", "ribs", "sausage"]
+        }
+      ]
+    },
+    {
+      "id": "italian",
+      "label": "Italian", 
+      "aliases": ["Mediterranean Italian", "Tuscan", "Sicilian", "Northern Italian", "Southern Italian", "Roman"],
+      "metadata": {
+        "origin": {
+          "primary_region": "Italy",
+          "countries": ["Italy"],
+          "geographic_tags": ["Southern Europe", "Mediterranean", "European Union"]
+        },
+        "characteristics": {
+          "flavor_profile": ["fresh", "aromatic", "simple", "herb-forward", "umami"],
+          "cooking_methods": ["sautéing", "grilling", "slow-simmering", "wood-fired", "al dente pasta"],
+          "key_ingredients": ["olive oil", "tomatoes", "basil", "garlic", "parmesan", "pasta", "wine"],
+          "signature_dishes": ["pasta carbonara", "pizza margherita", "risotto", "osso buco", "tiramisu", "gelato"]
+        },
+        "dietary_info": {
+          "common_restrictions": ["many vegetarian options", "pescatarian-friendly"],
+          "allergen_considerations": ["gluten (pasta)", "dairy (cheese)", "eggs"],
+          "health_adaptations": ["Mediterranean diet compliant", "abundant vegetables", "lean proteins available"]
+        },
+        "cultural_context": {
+          "historical_significance": "Ancient Roman cuisine evolved with regional influences",
+          "celebration_foods": ["Easter bread", "Christmas panettone", "feast of seven fishes"],
+          "family_traditions": "Long family meals, aperitivo culture, seasonal eating"
+        },
+        "searchability": {
+          "popularity_score": 9.8,
+          "difficulty_level": "easy-medium",
+          "availability_score": 9.5,
+          "keywords": ["pasta", "pizza", "mediterranean", "healthy", "wine", "romance", "classic"]
+        }
+      },
+      "related_cuisines": ["French", "Spanish", "Greek", "Mediterranean"],
+      "fusion_potential": ["Italian-Asian", "Italian-Mexican", "Italian-American"],
+      "regional_variations": [
+        {
+          "name": "Northern Italian",
+          "description": "Butter-based, rice dishes, alpine influences",
+          "signature_dishes": ["risotto", "polenta", "gorgonzola", "prosciutto"]
+        },
+        {
+          "name": "Southern Italian",
+          "description": "Olive oil-based, tomatoes, seafood, pasta",
+          "signature_dishes": ["pasta puttanesca", "caponata", "arancini"]
+        },
+        {
+          "name": "Sicilian",
+          "description": "North African and Arab influences, seafood-heavy",
+          "signature_dishes": ["pasta alla norma", "caponata", "cannoli"]
+        }
+      ]
+    },
+    {
+      "id": "mexican",
+      "label": "Mexican",
+      "aliases": ["Tex-Mex", "Oaxacan", "Yucatecan", "Veracruz", "Michoacán", "Poblano"],
+      "metadata": {
+        "origin": {
+          "primary_region": "Mexico",
+          "countries": ["Mexico"],
+          "geographic_tags": ["North America", "Latin America", "Central America"]
+        },
+        "characteristics": {
+          "flavor_profile": ["spicy", "complex", "earthy", "bright", "layered"],
+          "cooking_methods": ["grilling", "braising", "steaming", "stone-grinding", "charring"],
+          "key_ingredients": ["chiles", "corn", "beans", "tomatoes", "onions", "cilantro", "lime", "chocolate"],
+          "signature_dishes": ["mole", "tacos", "tamales", "pozole", "chiles rellenos", "guacamole"]
+        },
+        "dietary_info": {
+          "common_restrictions": ["many vegan options", "naturally gluten-free corn base"],
+          "allergen_considerations": ["dairy in some dishes", "nuts in mole"],
+          "health_adaptations": ["abundant vegetables", "lean proteins", "antioxidant-rich chiles"]
+        },
+        "cultural_context": {
+          "historical_significance": "Pre-Columbian indigenous cuisine with Spanish colonial influences",
+          "celebration_foods": ["Day of the Dead bread", "Christmas tamales", "Three Kings cake"],
+          "family_traditions": "Communal cooking, holiday masa preparation, regional specialties"
+        },
+        "searchability": {
+          "popularity_score": 9.5,
+          "difficulty_level": "medium-hard",
+          "availability_score": 8.8,
+          "keywords": ["spicy", "authentic", "street food", "vibrant", "fresh", "complex", "traditional"]
+        }
+      },
+      "related_cuisines": ["Spanish", "Guatemalan", "Southwestern US", "Peruvian"],
+      "fusion_potential": ["Korean-Mexican", "Japanese-Mexican", "Italian-Mexican"],
+      "regional_variations": [
+        {
+          "name": "Oaxacan",
+          "description": "Complex moles, indigenous ingredients, mezcal traditions",
+          "signature_dishes": ["mole negro", "tlayudas", "chapulines"]
+        },
+        {
+          "name": "Yucatecan", 
+          "description": "Mayan influences, citrus marinades, achiote",
+          "signature_dishes": ["cochinita pibil", "sopa de lima", "huevos motuleños"]
+        },
+        {
+          "name": "Tex-Mex",
+          "description": "American Southwest adaptation with beef and cheese focus",
+          "signature_dishes": ["chili con carne", "fajitas", "nachos"]
+        }
+      ]
+    },
+    {
+      "id": "chinese",
+      "label": "Chinese",
+      "aliases": ["Cantonese", "Sichuan", "Hunan", "Shanghainese", "Mandarin", "Beijing", "Guangdong"],
+      "metadata": {
+        "origin": {
+          "primary_region": "China",
+          "countries": ["China", "Taiwan", "Hong Kong", "Singapore"],
+          "geographic_tags": ["East Asia", "Asia-Pacific"]
+        },
+        "characteristics": {
+          "flavor_profile": ["umami", "balanced", "aromatic", "varied by region"],
+          "cooking_methods": ["stir-frying", "steaming", "braising", "deep-frying", "smoking"],
+          "key_ingredients": ["soy sauce", "ginger", "garlic", "scallions", "rice", "noodles", "sesame oil"],
+          "signature_dishes": ["kung pao chicken", "mapo tofu", "dim sum", "peking duck", "fried rice", "hot pot"]
+        },
+        "dietary_info": {
+          "common_restrictions": ["excellent vegetarian options", "Buddhist cuisine traditions"],
+          "allergen_considerations": ["soy", "shellfish", "peanuts", "sesame"],
+          "health_adaptations": ["steamed preparations", "vegetable-heavy", "light sauces"]
+        },
+        "cultural_context": {
+          "historical_significance": "5000+ year culinary tradition, regional imperial cuisines",
+          "celebration_foods": ["lunar new year dumplings", "mooncakes", "longevity noodles"],
+          "family_traditions": "Shared meals, tea culture, seasonal eating, medicinal foods"
+        },
+        "searchability": {
+          "popularity_score": 9.7,
+          "difficulty_level": "medium",
+          "availability_score": 9.2,
+          "keywords": ["stir fry", "authentic", "healthy", "quick", "flavorful", "traditional", "takeout"]
+        }
+      },
+      "related_cuisines": ["Japanese", "Korean", "Vietnamese", "Thai"],
+      "fusion_potential": ["Chinese-American", "Indo-Chinese", "Chinese-Italian"],
+      "regional_variations": [
+        {
+          "name": "Cantonese",
+          "description": "Light flavors, fresh ingredients, dim sum tradition",
+          "signature_dishes": ["har gow", "siu mai", "roast duck"]
+        },
+        {
+          "name": "Sichuan",
+          "description": "Spicy, numbing flavors, bold seasonings",
+          "signature_dishes": ["mapo tofu", "kung pao chicken", "hot pot"]
+        },
+        {
+          "name": "Hunan",
+          "description": "Very spicy, smoked and cured ingredients",
+          "signature_dishes": ["orange beef", "twice-cooked pork"]
+        }
+      ]
+    },
+    {
+      "id": "indian",
+      "label": "Indian",
+      "aliases": ["North Indian", "South Indian", "Bengali", "Punjabi", "Gujarati", "Tamil", "Kerala"],
+      "metadata": {
+        "origin": {
+          "primary_region": "Indian Subcontinent",
+          "countries": ["India", "Pakistan", "Bangladesh", "Sri Lanka"],
+          "geographic_tags": ["South Asia", "Asia-Pacific"]
+        },
+        "characteristics": {
+          "flavor_profile": ["spicy", "aromatic", "complex", "layered", "warming"],
+          "cooking_methods": ["slow-cooking", "tempering", "tandoor", "steaming", "grinding"],
+          "key_ingredients": ["cumin", "coriander", "turmeric", "garam masala", "ginger", "garlic", "chiles"],
+          "signature_dishes": ["butter chicken", "biryani", "dal", "naan", "samosas", "curry"]
+        },
+        "dietary_info": {
+          "common_restrictions": ["extensive vegetarian traditions", "vegan-friendly"],
+          "allergen_considerations": ["dairy", "nuts", "gluten in some breads"],
+          "health_adaptations": ["anti-inflammatory spices", "legume-rich", "vegetable-focused"]
+        },
+        "cultural_context": {
+          "historical_significance": "Ancient Ayurvedic principles, Mughal influences, regional diversity",
+          "celebration_foods": ["Diwali sweets", "Holi colors", "wedding feasts"],
+          "family_traditions": "Spice grinding, seasonal cooking, religious dietary practices"
+        },
+        "searchability": {
+          "popularity_score": 9.3,
+          "difficulty_level": "medium-hard",
+          "availability_score": 8.5,
+          "keywords": ["curry", "spicy", "vegetarian", "aromatic", "healthy", "authentic", "complex"]
+        }
+      },
+      "related_cuisines": ["Pakistani", "Bangladeshi", "Sri Lankan", "Nepalese"],
+      "fusion_potential": ["Indo-Chinese", "British-Indian", "Indo-Mexican"],
+      "regional_variations": [
+        {
+          "name": "North Indian",
+          "description": "Dairy-rich, wheat-based, tandoor cooking",
+          "signature_dishes": ["butter chicken", "naan", "paneer makhani"]
+        },
+        {
+          "name": "South Indian",
+          "description": "Rice-based, coconut, fermented foods, vegetarian",
+          "signature_dishes": ["dosa", "sambar", "rasam", "idli"]
+        },
+        {
+          "name": "Bengali",
+          "description": "Fish-heavy, sweet desserts, mustard oil",
+          "signature_dishes": ["fish curry", "rasgulla", "mishti doi"]
+        }
+      ]
+    }
+  ],
+  "categories": {
+    "by_region": {
+      "Asia": ["Chinese", "Indian", "Japanese", "Korean", "Thai", "Vietnamese"],
+      "Europe": ["Italian", "French", "Spanish", "Greek", "German"],
+      "Americas": ["Mexican", "Southern US", "Brazilian", "Peruvian"],
+      "Africa": ["Ethiopian", "Moroccan", "Nigerian", "South African"],
+      "Middle_East": ["Lebanese", "Turkish", "Persian", "Israeli"]
+    },
+    "by_difficulty": {
+      "beginner": ["Italian", "Chinese", "Mexican"],
+      "intermediate": ["Indian", "Thai", "French"],
+      "advanced": ["Japanese", "Ethiopian", "Peruvian"]
+    },
+    "by_dietary": {
+      "vegetarian_friendly": ["Indian", "Italian", "Mexican", "Thai"],
+      "vegan_options": ["Chinese", "Indian", "Ethiopian", "Lebanese"],
+      "gluten_free_adaptable": ["Mexican", "Indian", "Thai", "Vietnamese"]
+    }
+  },
+  "search_indexes": {
+    "keywords": {
+      "spicy": ["Mexican", "Indian", "Thai", "Korean", "Ethiopian"],
+      "healthy": ["Japanese", "Italian", "Greek", "Vietnamese", "Lebanese"], 
+      "comfort": ["Southern US", "Italian", "German", "British"],
+      "quick": ["Chinese", "Thai", "Italian", "Korean"],
+      "authentic": ["Indian", "Mexican", "Chinese", "Ethiopian"],
+      "family": ["Southern US", "Italian", "Mexican", "Chinese"]
+    },
+    "ingredients": {
+      "rice": ["Chinese", "Indian", "Japanese", "Thai", "Vietnamese"],
+      "noodles": ["Chinese", "Italian", "Japanese", "Thai", "Vietnamese"],
+      "tomatoes": ["Italian", "Mexican", "Greek", "Spanish"],
+      "spices": ["Indian", "Mexican", "Ethiopian", "Moroccan"],
+      "seafood": ["Japanese", "Chinese", "Italian", "Greek", "Vietnamese"]
+    }
+  }
+}

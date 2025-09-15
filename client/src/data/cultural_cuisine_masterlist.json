@@ -1,0 +1,710 @@
+[
+  {
+    "label": "Southern US",
+    "aliases": ["Soul Food", "African-American Southern", "Southern Comfort Food"]
+  },
+  {
+    "label": "Italian",
+    "aliases": ["Mediterranean Italian", "Tuscan", "Sicilian", "Northern Italian"]
+  },
+  {
+    "label": "Mexican",
+    "aliases": ["Tex-Mex", "Oaxacan", "Yucatecan", "Veracruz"]
+  },
+  {
+    "label": "Chinese",
+    "aliases": ["Cantonese", "Sichuan", "Hunan", "Shanghainese", "Mandarin"]
+  },
+  {
+    "label": "Japanese",
+    "aliases": ["Washoku", "Kaiseki", "Izakaya", "Traditional Japanese"]
+  },
+  {
+    "label": "Indian",
+    "aliases": ["North Indian", "South Indian", "Bengali", "Punjabi", "Gujarati"]
+  },
+  {
+    "label": "Thai",
+    "aliases": ["Isaan", "Northern Thai", "Central Thai", "Southern Thai"]
+  },
+  {
+    "label": "French",
+    "aliases": ["Classic French", "Provençal", "Brittany", "Alsatian"]
+  },
+  {
+    "label": "Greek",
+    "aliases": ["Mediterranean Greek", "Cretan", "Macedonian Greek"]
+  },
+  {
+    "label": "Korean",
+    "aliases": ["Traditional Korean", "Modern Korean", "Korean BBQ"]
+  },
+  {
+    "label": "Vietnamese",
+    "aliases": ["Northern Vietnamese", "Southern Vietnamese", "Central Vietnamese"]
+  },
+  {
+    "label": "Middle Eastern",
+    "aliases": ["Lebanese", "Syrian", "Persian", "Turkish", "Moroccan"]
+  },
+  {
+    "label": "Spanish",
+    "aliases": ["Andalusian", "Basque", "Catalan", "Galician"]
+  },
+  {
+    "label": "German",
+    "aliases": ["Bavarian", "Saxon", "Rhine", "Swabian"]
+  },
+  {
+    "label": "Ethiopian",
+    "aliases": ["Amhara", "Oromo", "Tigray", "East African"]
+  },
+  {
+    "label": "Caribbean",
+    "aliases": ["Jamaican", "Cuban", "Puerto Rican", "Dominican", "Haitian"]
+  },
+  {
+    "label": "Brazilian",
+    "aliases": ["Bahian", "Mineiro", "Northeastern", "Gaucho"]
+  },
+  {
+    "label": "African",
+    "aliases": ["West African", "Nigerian", "Ghanaian", "Senegalese"]
+  },
+  {
+    "label": "Russian",
+    "aliases": ["Eastern European", "Ukrainian", "Polish", "Czech"]
+  },
+  {
+    "label": "Scandinavian",
+    "aliases": ["Swedish", "Norwegian", "Danish", "Finnish"]
+  },
+  {
+    "label": "British",
+    "aliases": ["English", "Scottish", "Welsh", "Irish"]
+  },
+  {
+    "label": "Filipino",
+    "aliases": ["Luzon", "Visayan", "Mindanao", "Southeast Asian"]
+  },
+  {
+    "label": "Argentinian",
+    "aliases": ["Patagonian", "Pampas", "Northeastern Argentine"]
+  },
+  {
+    "label": "Peruvian",
+    "aliases": ["Coastal Peruvian", "Andean", "Amazonian Peruvian"]
+  },
+  {
+    "label": "Lebanese",
+    "aliases": ["Levantine", "Mediterranean Lebanese", "Mountain Lebanese"]
+  },
+  {
+    "label": "Moroccan",
+    "aliases": ["Maghrebi", "Berber", "Andalusian Moroccan"]
+  },
+  {
+    "label": "Indonesian",
+    "aliases": ["Javanese", "Balinese", "Sumatran", "Sundanese"]
+  },
+  {
+    "label": "Malaysian",
+    "aliases": ["Malay", "Chinese Malaysian", "Indian Malaysian"]
+  },
+  {
+    "label": "Singaporean",
+    "aliases": ["Hawker", "Peranakan", "Eurasian Singaporean"]
+  },
+  {
+    "label": "Pakistani",
+    "aliases": ["Punjabi Pakistani", "Sindhi", "Balochi", "Pashtun"]
+  },
+  {
+    "label": "Bangladeshi",
+    "aliases": ["Bengali Bangladeshi", "Sylheti", "Chittagonian"]
+  },
+  {
+    "label": "Sri Lankan",
+    "aliases": ["Sinhalese", "Tamil Sri Lankan", "Burgher"]
+  },
+  {
+    "label": "Nepalese",
+    "aliases": ["Himalayan", "Sherpa", "Newari"]
+  },
+  {
+    "label": "Tibetan",
+    "aliases": ["High Altitude", "Himalayan Tibetan", "Monastery"]
+  },
+  {
+    "label": "Mongolian",
+    "aliases": ["Nomadic", "Central Asian", "Traditional Mongolian"]
+  },
+  {
+    "label": "Central Asian",
+    "aliases": ["Uzbek", "Kazakh", "Kyrgyz", "Tajik"]
+  },
+  {
+    "label": "Georgian",
+    "aliases": ["Caucasian", "Supra", "Traditional Georgian"]
+  },
+  {
+    "label": "Armenian",
+    "aliases": ["Caucasian Armenian", "Diaspora Armenian", "Eastern Armenian"]
+  },
+  {
+    "label": "Jewish",
+    "aliases": ["Ashkenazi", "Sephardic", "Mizrahi", "Kosher"]
+  },
+  {
+    "label": "Native American",
+    "aliases": ["Indigenous American", "First Nations", "Tribal"]
+  },
+  {
+    "label": "Inuit",
+    "aliases": ["Arctic", "Alaskan Native", "Greenlandic"]
+  },
+  {
+    "label": "Australian",
+    "aliases": ["Bush Tucker", "Modern Australian", "Aboriginal Australian"]
+  },
+  {
+    "label": "New Zealand",
+    "aliases": ["Maori", "Kiwi", "Pacific Islander"]
+  },
+  {
+    "label": "Polynesian",
+    "aliases": ["Hawaiian", "Samoan", "Tongan", "Fijian"]
+  },
+  {
+    "label": "Creole",
+    "aliases": ["Louisiana Creole", "Cajun", "New Orleans"]
+  },
+  {
+    "label": "Fusion",
+    "aliases": ["Pan-Asian", "Tex-Mex", "California", "Modern Fusion"]
+  },
+  {
+    "label": "Plant-Based",
+    "aliases": ["Vegan", "Vegetarian", "Raw Food", "Macrobiotic"]
+  },
+  {
+    "label": "Paleo",
+    "aliases": ["Ancestral", "Primal", "Stone Age"]
+  },
+  {
+    "label": "Keto",
+    "aliases": ["Low-Carb", "High-Fat", "Ketogenic"]
+  },
+  {
+    "label": "Mediterranean",
+    "aliases": ["Coastal Mediterranean", "Blue Zone", "Olive Oil Based"]
+  },
+  {
+    "label": "Nordic",
+    "aliases": ["New Nordic", "Foraged", "Scandinavian Modern"]
+  },
+  {
+    "label": "Balkan",
+    "aliases": ["Serbian", "Croatian", "Bosnian", "Bulgarian"]
+  },
+  {
+    "label": "Slovakian",
+    "aliases": ["Central European", "Habsburg", "Mountain Slovak"]
+  },
+  {
+    "label": "Hungarian",
+    "aliases": ["Magyar", "Austro-Hungarian", "Paprika"]
+  },
+  {
+    "label": "Portuguese",
+    "aliases": ["Lusitanian", "Azorean", "Madeiran"]
+  },
+  {
+    "label": "Dutch",
+    "aliases": ["Netherlands", "Flemish", "Low Country"]
+  },
+  {
+    "label": "Belgian",
+    "aliases": ["Flemish Belgian", "Walloon", "Brussels"]
+  },
+  {
+    "label": "Swiss",
+    "aliases": ["Alpine", "German Swiss", "French Swiss", "Italian Swiss"]
+  },
+  {
+    "label": "Austrian",
+    "aliases": ["Viennese", "Tyrolean", "Salzburg"]
+  },
+  {
+    "label": "Ecuadorian",
+    "aliases": ["Andean Ecuadorian", "Coastal Ecuadorian", "Amazonian Ecuadorian"]
+  },
+  {
+    "label": "Colombian",
+    "aliases": ["Bogotano", "Paisa", "Costeño", "Llanero"]
+  },
+  {
+    "label": "Venezuelan",
+    "aliases": ["Andean Venezuelan", "Coastal Venezuelan", "Plains Venezuelan"]
+  },
+  {
+    "label": "Bolivian",
+    "aliases": ["Altiplano", "Lowland Bolivian", "Andean Bolivian"]
+  },
+  {
+    "label": "Chilean",
+    "aliases": ["Central Chilean", "Northern Chilean", "Southern Chilean"]
+  },
+  {
+    "label": "Uruguayan",
+    "aliases": ["River Plate", "Gaucho Uruguayan", "Montevideo"]
+  },
+  {
+    "label": "Paraguayan",
+    "aliases": ["Guarani", "Chaco", "River Plate Paraguayan"]
+  },
+  {
+    "label": "Guyanese",
+    "aliases": ["Indo-Guyanese", "Afro-Guyanese", "Amerindian Guyanese"]
+  },
+  {
+    "label": "Surinamese",
+    "aliases": ["Javanese Surinamese", "Maroon", "Hindustani Surinamese"]
+  },
+  {
+    "label": "Salvadoran",
+    "aliases": ["Central American", "Pipil", "Mestizo Salvadoran"]
+  },
+  {
+    "label": "Guatemalan",
+    "aliases": ["Maya", "Ladino", "Highland Guatemalan"]
+  },
+  {
+    "label": "Honduran",
+    "aliases": ["Lenca", "Garifuna", "Mestizo Honduran"]
+  },
+  {
+    "label": "Nicaraguan",
+    "aliases": ["Creole Nicaraguan", "Mestizo Nicaraguan", "Miskito"]
+  },
+  {
+    "label": "Costa Rican",
+    "aliases": ["Tico", "Central Valley", "Guanacaste"]
+  },
+  {
+    "label": "Panamanian",
+    "aliases": ["Afro-Panamanian", "Indigenous Panamanian", "Mestizo Panamanian"]
+  },
+  {
+    "label": "Belizean",
+    "aliases": ["Creole Belizean", "Garifuna Belizean", "Maya Belizean"]
+  },
+  {
+    "label": "Algerian",
+    "aliases": ["Maghrebi Algerian", "Berber Algerian", "Saharan"]
+  },
+  {
+    "label": "Tunisian",
+    "aliases": ["Maghrebi Tunisian", "Berber Tunisian", "Coastal Tunisian"]
+  },
+  {
+    "label": "Libyan",
+    "aliases": ["Maghrebi Libyan", "Berber Libyan", "Saharan Libyan"]
+  },
+  {
+    "label": "Egyptian",
+    "aliases": ["Pharaonic", "Coptic", "Nubian"]
+  },
+  {
+    "label": "Sudanese",
+    "aliases": ["Nubian Sudanese", "Arab Sudanese", "Nilotic"]
+  },
+  {
+    "label": "Kenyan",
+    "aliases": ["Swahili", "Kikuyu", "Maasai", "Luo"]
+  },
+  {
+    "label": "Tanzanian",
+    "aliases": ["Swahili Tanzanian", "Chagga", "Maasai Tanzanian"]
+  },
+  {
+    "label": "Ugandan",
+    "aliases": ["Buganda", "Acholi", "Karamoja"]
+  },
+  {
+    "label": "Rwandan",
+    "aliases": ["Hutu", "Tutsi", "Twa"]
+  },
+  {
+    "label": "Burundian",
+    "aliases": ["Hutu Burundian", "Tutsi Burundian", "Twa Burundian"]
+  },
+  {
+    "label": "Malian",
+    "aliases": ["Bambara", "Dogon", "Tuareg"]
+  },
+  {
+    "label": "Senegalese",
+    "aliases": ["Wolof", "Pulaar", "Serer"]
+  },
+  {
+    "label": "Ivorian",
+    "aliases": ["Akan", "Voltaic", "Mande Ivorian"]
+  },
+  {
+    "label": "Ghanaian",
+    "aliases": ["Akan Ghanaian", "Ga", "Ewe"]
+  },
+  {
+    "label": "Nigerian",
+    "aliases": ["Yoruba", "Igbo", "Hausa", "Fulani"]
+  },
+  {
+    "label": "Cameroonian",
+    "aliases": ["Bamileke", "Fulani Cameroonian", "Bantu Cameroonian"]
+  },
+  {
+    "label": "Congolese",
+    "aliases": ["Bantu Congolese", "Pygmy", "Lingala"]
+  },
+  {
+    "label": "Angolan",
+    "aliases": ["Ovimbundu", "Kimbundu", "Bakongo"]
+  },
+  {
+    "label": "South African",
+    "aliases": ["Afrikaner", "Zulu", "Xhosa", "Cape Malay"]
+  },
+  {
+    "label": "Zimbabwean",
+    "aliases": ["Shona", "Ndebele", "Tonga Zimbabwean"]
+  },
+  {
+    "label": "Botswanan",
+    "aliases": ["Tswana", "Kalanga", "San"]
+  },
+  {
+    "label": "Namibian",
+    "aliases": ["Ovambo", "Herero", "Nama"]
+  },
+  {
+    "label": "Zambian",
+    "aliases": ["Bemba", "Tonga Zambian", "Lozi"]
+  },
+  {
+    "label": "Malawian",
+    "aliases": ["Chewa", "Lomwe", "Yao"]
+  },
+  {
+    "label": "Mozambican",
+    "aliases": ["Makua", "Tsonga", "Shona Mozambican"]
+  },
+  {
+    "label": "Malagasy",
+    "aliases": ["Merina", "Betsileo", "Sakalava"]
+  },
+  {
+    "label": "Mauritian",
+    "aliases": ["Indo-Mauritian", "Creole Mauritian", "Sino-Mauritian"]
+  },
+  {
+    "label": "Seychellois",
+    "aliases": ["Creole Seychellois", "Franco-Seychellois", "Indo-Seychellois"]
+  },
+  {
+    "label": "Eritrean",
+    "aliases": ["Tigrinya", "Tigre", "Saho"]
+  },
+  {
+    "label": "Somali",
+    "aliases": ["Cushitic", "Bantu Somali", "Horn of Africa"]
+  },
+  {
+    "label": "Djiboutian",
+    "aliases": ["Somali Djiboutian", "Afar", "Arab Djiboutian"]
+  },
+  {
+    "label": "Comorian",
+    "aliases": ["Comorian Creole", "Arab Comorian", "Swahili Comorian"]
+  },
+  {
+    "label": "Cape Verdean",
+    "aliases": ["Creole Cape Verdean", "Portuguese Cape Verdean", "West African Cape Verdean"]
+  },
+  {
+    "label": "Guinean",
+    "aliases": ["Fulani Guinean", "Malinke", "Susu"]
+  },
+  {
+    "label": "Guinea-Bissauan",
+    "aliases": ["Balanta", "Fula Guinea-Bissauan", "Mandinka Guinea-Bissauan"]
+  },
+  {
+    "label": "Liberian",
+    "aliases": ["Americo-Liberian", "Kpelle", "Bassa"]
+  },
+  {
+    "label": "Sierra Leonean",
+    "aliases": ["Temne", "Mende", "Krio"]
+  },
+  {
+    "label": "Gambian",
+    "aliases": ["Mandinka Gambian", "Fula Gambian", "Wolof Gambian"]
+  },
+  {
+    "label": "Mauritanian",
+    "aliases": ["Moor", "Fulani Mauritanian", "Soninke"]
+  },
+  {
+    "label": "Sahrawi",
+    "aliases": ["Western Saharan", "Hassaniya", "Bedouin"]
+  },
+  {
+    "label": "Chadian",
+    "aliases": ["Sara", "Arab Chadian", "Kanem"]
+  },
+  {
+    "label": "Central African",
+    "aliases": ["Banda", "Baya", "Mandjia"]
+  },
+  {
+    "label": "Gabonese",
+    "aliases": ["Fang", "Punu", "Nzebi"]
+  },
+  {
+    "label": "Equatoguinean",
+    "aliases": ["Fang Equatoguinean", "Bubi", "Annobonese"]
+  },
+  {
+    "label": "Sao Tomean",
+    "aliases": ["Creole Sao Tomean", "Angolar", "Principense"]
+  },
+  {
+    "label": "Lesothan",
+    "aliases": ["Basotho", "Sotho", "Mountain Kingdom"]
+  },
+  {
+    "label": "Swazi",
+    "aliases": ["Swati", "Nguni Swazi", "Southern African"]
+  },
+  {
+    "label": "Burmese",
+    "aliases": ["Myanmar", "Shan", "Karen"]
+  },
+  {
+    "label": "Cambodian",
+    "aliases": ["Khmer", "Khmer Rouge", "Angkor"]
+  },
+  {
+    "label": "Laotian",
+    "aliases": ["Lao", "Hmong", "Tai Lao"]
+  },
+  {
+    "label": "Uzbek",
+    "aliases": ["Silk Road", "Turkic Uzbek", "Samarkand"]
+  },
+  {
+    "label": "Kazakh",
+    "aliases": ["Nomadic Kazakh", "Turkic Kazakh", "Steppe"]
+  },
+  {
+    "label": "Kyrgyz",
+    "aliases": ["Nomadic Kyrgyz", "Turkic Kyrgyz", "Mountain Kyrgyz"]
+  },
+  {
+    "label": "Tajik",
+    "aliases": ["Persian Tajik", "Pamir", "Sogdian"]
+  },
+  {
+    "label": "Turkmen",
+    "aliases": ["Turkic Turkmen", "Karakum", "Nomadic Turkmen"]
+  },
+  {
+    "label": "Afghan",
+    "aliases": ["Pashtun", "Tajik Afghan", "Hazara", "Uzbek Afghan"]
+  },
+  {
+    "label": "Jordanian",
+    "aliases": ["Levantine Jordanian", "Bedouin Jordanian", "Palestinian Jordanian"]
+  },
+  {
+    "label": "Palestinian",
+    "aliases": ["Levantine Palestinian", "Gaza", "West Bank"]
+  },
+  {
+    "label": "Israeli",
+    "aliases": ["Sabra", "Mizrahi Israeli", "Ashkenazi Israeli", "Sephardic Israeli"]
+  },
+  {
+    "label": "Syrian",
+    "aliases": ["Levantine Syrian", "Alawite", "Kurdish Syrian"]
+  },
+  {
+    "label": "Iraqi",
+    "aliases": ["Mesopotamian", "Kurdish Iraqi", "Assyrian"]
+  },
+  {
+    "label": "Kuwaiti",
+    "aliases": ["Gulf Kuwaiti", "Bedouin Kuwaiti", "Persian Kuwaiti"]
+  },
+  {
+    "label": "Bahraini",
+    "aliases": ["Gulf Bahraini", "Shia Bahraini", "Sunni Bahraini"]
+  },
+  {
+    "label": "Qatari",
+    "aliases": ["Gulf Qatari", "Bedouin Qatari", "Persian Qatari"]
+  },
+  {
+    "label": "Emirati",
+    "aliases": ["Gulf Emirati", "Bedouin Emirati", "Persian Emirati"]
+  },
+  {
+    "label": "Omani",
+    "aliases": ["Gulf Omani", "Balochi Omani", "Yemeni Omani"]
+  },
+  {
+    "label": "Yemeni",
+    "aliases": ["Hadhrami", "Houthi", "Zaydi"]
+  },
+  {
+    "label": "Saudi",
+    "aliases": ["Najdi", "Hijazi", "Bedouin Saudi"]
+  },
+  {
+    "label": "Azerbaijani",
+    "aliases": ["Turkic Azerbaijani", "Caucasian Azerbaijani", "Caspian"]
+  },
+  {
+    "label": "Latvian",
+    "aliases": ["Baltic Latvian", "Livonian", "Courland"]
+  },
+  {
+    "label": "Lithuanian",
+    "aliases": ["Baltic Lithuanian", "Samogitian", "Aukštaitian"]
+  },
+  {
+    "label": "Estonian",
+    "aliases": ["Baltic Estonian", "Finno-Ugric", "Nordic Estonian"]
+  },
+  {
+    "label": "Belarusian",
+    "aliases": ["Slavic Belarusian", "Polesian", "Kryvian"]
+  },
+  {
+    "label": "Moldovan",
+    "aliases": ["Romanian Moldovan", "Gagauz", "Bessarabian"]
+  },
+  {
+    "label": "Albanian",
+    "aliases": ["Gheg", "Tosk", "Balkan Albanian"]
+  },
+  {
+    "label": "Macedonian",
+    "aliases": ["Slavic Macedonian", "Balkan Macedonian", "Vardar"]
+  },
+  {
+    "label": "Montenegrin",
+    "aliases": ["Slavic Montenegrin", "Balkan Montenegrin", "Dinaric"]
+  },
+  {
+    "label": "Kosovan",
+    "aliases": ["Albanian Kosovan", "Serbian Kosovan", "Balkan Kosovan"]
+  },
+  {
+    "label": "Slovenian",
+    "aliases": ["Alpine Slovenian", "Pannonian", "Karst"]
+  },
+  {
+    "label": "Maltese",
+    "aliases": ["Mediterranean Maltese", "Semitic Maltese", "Italian Maltese"]
+  },
+  {
+    "label": "Cypriot",
+    "aliases": ["Greek Cypriot", "Turkish Cypriot", "Mediterranean Cypriot"]
+  },
+  {
+    "label": "Icelandic",
+    "aliases": ["Nordic Icelandic", "Viking", "North Atlantic"]
+  },
+  {
+    "label": "Faroese",
+    "aliases": ["Nordic Faroese", "North Atlantic Faroese", "Danish Faroese"]
+  },
+  {
+    "label": "Greenlandic",
+    "aliases": ["Inuit Greenlandic", "Arctic Greenlandic", "Danish Greenlandic"]
+  },
+  {
+    "label": "Bhutanese",
+    "aliases": ["Drukpa", "Nepali Bhutanese", "Tibetan Bhutanese"]
+  },
+  {
+    "label": "Maldivian",
+    "aliases": ["Dhivehi", "South Asian Maldivian", "Islamic Maldivian"]
+  },
+  {
+    "label": "Bruneian",
+    "aliases": ["Malay Bruneian", "Chinese Bruneian", "Islamic Bruneian"]
+  },
+  {
+    "label": "Timorese",
+    "aliases": ["Tetun", "Portuguese Timorese", "Indonesian Timorese"]
+  },
+  {
+    "label": "Palauan",
+    "aliases": ["Micronesian Palauan", "Chamorro Palauan", "Filipino Palauan"]
+  },
+  {
+    "label": "Micronesian",
+    "aliases": ["Chuukese", "Pohnpeian", "Yapese"]
+  },
+  {
+    "label": "Marshallese",
+    "aliases": ["Micronesian Marshallese", "Atoll", "Pacific Islander Marshallese"]
+  },
+  {
+    "label": "Nauruan",
+    "aliases": ["Micronesian Nauruan", "Phosphate Island", "Pacific Islander Nauruan"]
+  },
+  {
+    "label": "Kiribati",
+    "aliases": ["Gilbertese", "Micronesian Kiribati", "Atoll Kiribati"]
+  },
+  {
+    "label": "Tuvaluan",
+    "aliases": ["Polynesian Tuvaluan", "Atoll Tuvaluan", "Pacific Islander Tuvaluan"]
+  },
+  {
+    "label": "Vanuatuan",
+    "aliases": ["Melanesian", "Ni-Vanuatu", "Pacific Islander Vanuatuan"]
+  },
+  {
+    "label": "Solomon Islander",
+    "aliases": ["Melanesian Solomon Islander", "Pacific Islander Solomon Islander", "Papuan Solomon Islander"]
+  },
+  {
+    "label": "Papua New Guinean",
+    "aliases": ["Melanesian PNG", "Papuan", "Austronesian PNG"]
+  },
+  {
+    "label": "Andorran",
+    "aliases": ["Catalan Andorran", "Pyrenean", "Romance Andorran"]
+  },
+  {
+    "label": "Monégasque",
+    "aliases": ["French Monégasque", "Italian Monégasque", "Mediterranean Monégasque"]
+  },
+  {
+    "label": "Liechtenstein",
+    "aliases": ["German Liechtenstein", "Alpine Liechtenstein", "Alemannic"]
+  },
+  {
+    "label": "San Marinese",
+    "aliases": ["Italian San Marinese", "Apennine", "Romance San Marinese"]
+  },
+  {
+    "label": "Vatican",
+    "aliases": ["Italian Vatican", "Catholic Vatican", "Roman Vatican"]
+  }
+]
