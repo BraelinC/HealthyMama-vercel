@@ -1,11 +1,11 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { enhancedMealPlanGenerator } from '../server/enhancedMealPlanGenerator';
 import { intelligentPromptBuilderV2 } from '../server/intelligentPromptBuilderV2';
 import { culturalMealRecommendationEngine } from '../server/culturalMealRecommendationEngine';
 
 // JWT middleware for Vercel
-function authenticateToken(req: NextApiRequest): { userId: string } | null {
+function authenticateToken(req: VercelRequest): { userId: string } | null {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -19,7 +19,7 @@ function authenticateToken(req: NextApiRequest): { userId: string } | null {
   }
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
