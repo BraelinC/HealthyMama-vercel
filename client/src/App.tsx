@@ -12,9 +12,10 @@ import Search from "@/pages/Search";
 import EditableMealPlanner from "@/pages/EditableMealPlanner";
 import MealPlanner from "@/pages/MealPlannerNew";
 import Profile from "@/pages/Profile";
+import Chat from "@/pages/Chat";
 
 import IconShowcase from "@/pages/IconShowcase";
-import { HandPlatter, BookOpen, ChefHat, LogOut, User, CalendarDays, Settings, Users } from "lucide-react";
+import { HandPlatter, BookOpen, ChefHat, LogOut, User, CalendarDays, Settings, Users, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/AuthForm";
@@ -139,6 +140,7 @@ function AppTabBar() {
     { icon: <HandPlatter className="w-5 h-5" />, label: "Search", path: "/search" },
     { icon: <ChefHat className="w-5 h-5" />, label: "Home", path: "/" },
     { icon: <CalendarDays className="w-5 h-5" />, label: "Planner", path: "/meal-planner" },
+    { icon: <Bot className="w-5 h-5" />, label: "AI Chat", path: "/chat" },
     { icon: <Users className="w-5 h-5" />, label: "Communities", path: "/communities" },
   ];
   
@@ -331,6 +333,7 @@ function Router() {
                 <Route path="/" component={Home} />
                 <Route path="/search" component={Search} />
                 <Route path="/meal-planner" component={MealPlanner} />
+                <Route path="/chat" component={Chat} />
                 <Route path="/communities" component={Communities} />
                 <Route path="/creator-hub" component={CreatorHub} />
                 <Route path="/community/:id/manage" component={CommunityManage} />
