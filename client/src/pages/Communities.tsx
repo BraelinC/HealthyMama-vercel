@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, TrendingUp, Plus, Search, ChefHat, DollarSign, Globe, Heart } from "lucide-react";
+import { Users, TrendingUp, Plus, Search, ChefHat, DollarSign, Globe, Heart, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
@@ -81,8 +85,16 @@ export default function Communities() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [communityForm, setCommunityForm] = useState({
+    name: "",
+    description: "",
+    category: "",
+    cover_image: ""
+  });
   // Use actual creator status from user account - fix nested user object
-  const isCreator = user?.user?.is_creator || user?.is_creator;
+  // Handle both possible data structures: { user: {...} } or direct { ... }
+  const isCreator = Boolean(user?.user?.is_creator || user?.is_creator);
   
   // Debug logging to check user data structure
   console.log('🔍 [Communities Debug] Complete User data:', JSON.stringify(user, null, 2));
@@ -119,8 +131,37 @@ export default function Communities() {
       });
     },
   });
-  
 
+  // Create community mutation
+  const createCommunityMutation = useMutation({
+    mutationFn: async (formData: typeof communityForm) => {
+      const { apiRequest } = await import("@/lib/queryClient");
+      return await apiRequest("/api/communities", {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
+    },
+    onSuccess: (data) => {
+      console.log('🔍 [Community Creation] Success:', data);
+      toast({
+        title: "Community Created!",
+        description: `Your community "${communityForm.name}" has been created successfully.`,
+      });
+      // Reset form and close modal
+      setCommunityForm({ name: "", description: "", category: "", cover_image: "" });
+      setShowCreateModal(false);
+      // Refresh communities list
+      queryClient.invalidateQueries({ queryKey: ["/api/communities"] });
+    },
+    onError: (error) => {
+      console.error('🔍 [Community Creation] Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create community. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch communities - only when authenticated
   const { data: communities = [], isLoading: loadingCommunities } = useQuery({
@@ -418,8 +459,11 @@ export default function Communities() {
                     <p className="text-gray-600 max-w-xs">
                       Start sharing your meal plans and build a following
                     </p>
-                    <Button disabled className="opacity-50">
-                      Create Community (Coming Soon)
+                    <Button
+                      onClick={() => setShowCreateModal(true)}
+                      className="bg-gradient-to-r from-purple-500 to-emerald-500 hover:from-purple-600 hover:to-emerald-600"
+                    >
+                      Create Community
                     </Button>
                   </div>
                 </Card>
@@ -573,6 +617,91 @@ export default function Communities() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Community Creation Modal */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Community</DialogTitle>
+            <DialogDescription>
+              Create a community to share meal plans and connect with others who share your interests.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Community Name</Label>
+              <Input
+                id="name"
+                placeholder="Enter community name"
+                value={communityForm.name}
+                onChange={(e) => setCommunityForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe your community"
+                value={communityForm.description}
+                onChange={(e) => setCommunityForm(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={communityForm.category} onValueChange={(value) => setCommunityForm(prev => ({ ...prev, category: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Budget">Budget</SelectItem>
+                  <SelectItem value="Family">Family</SelectItem>
+                  <SelectItem value="Cultural">Cultural</SelectItem>
+                  <SelectItem value="Health">Health</SelectItem>
+                  <SelectItem value="Fitness">Fitness</SelectItem>
+                  <SelectItem value="Vegan">Vegan</SelectItem>
+                  <SelectItem value="Keto">Keto</SelectItem>
+                  <SelectItem value="Mediterranean">Mediterranean</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="cover_image">Cover Image URL (Optional)</Label>
+              <Input
+                id="cover_image"
+                placeholder="https://example.com/image.jpg"
+                value={communityForm.cover_image}
+                onChange={(e) => setCommunityForm(prev => ({ ...prev, cover_image: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!communityForm.name || !communityForm.description || !communityForm.category) {
+                  toast({
+                    title: "Missing Information",
+                    description: "Please fill in all required fields.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                createCommunityMutation.mutate(communityForm);
+              }}
+              disabled={createCommunityMutation.isPending}
+              className="bg-gradient-to-r from-purple-500 to-emerald-500 hover:from-purple-600 hover:to-emerald-600"
+            >
+              {createCommunityMutation.isPending ? "Creating..." : "Create Community"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

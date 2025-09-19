@@ -3,13 +3,19 @@ import session from "express-session";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 // Load environment variables from .env file BEFORE any other imports that use them
 // Look for .env in parent directory (project root)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+const envPath = path.join(__dirname, '..', '.env');
+console.log('🔍 [ENV DEBUG] Looking for .env at:', envPath);
+console.log('🔍 [ENV DEBUG] File exists:', fs.existsSync(envPath));
+const result = dotenv.config({ path: envPath });
+console.log('🔍 [ENV DEBUG] dotenv result:', result.error ? result.error.message : 'success');
+console.log('🔍 [ENV DEBUG] DATABASE_URL loaded:', !!process.env.DATABASE_URL);
 
 
 

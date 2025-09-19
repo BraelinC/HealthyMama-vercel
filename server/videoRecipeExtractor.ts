@@ -1,4 +1,5 @@
-import fetch from 'node-fetch';
+// Use native fetch instead of node-fetch
+// import fetch from 'node-fetch';
 import { groqValidator } from './groqValidator';
 import { parseIngredientsWithGPT } from './gptIngredientParser';
 import { deduplicateIngredients, cleanIngredientList } from "./ingredientDeduplicator";
@@ -168,10 +169,17 @@ export async function findBestRecipeVideo(query: string, filters?: {
   excludeIngredients?: string;
 }, spoonacularTime?: number): Promise<YouTubeVideoInfo | null> {
   try {
+    console.log(`🔍 [YOUTUBE SEARCH] Starting search for: "${query}"`);
+    console.log(`🔍 [YOUTUBE SEARCH] Filters:`, filters);
+    console.log(`🔍 [YOUTUBE SEARCH] Spoonacular time:`, spoonacularTime);
+
     if (!YOUTUBE_API_KEY && !YOUTUBE_API_KEY_BACKUP) {
-      console.error("No YouTube API keys found in environment variables");
+      console.error("❌ [YOUTUBE SEARCH] No YouTube API keys found in environment variables");
       return null;
     }
+
+    console.log(`✅ [YOUTUBE SEARCH] API key available: ${YOUTUBE_API_KEY ? 'primary' : 'backup only'}`);
+    console.log(`✅ [YOUTUBE SEARCH] Using global fetch:`, typeof globalThis.fetch);
     
     // Simplified, effective query generation
     let searchQuery = query;
@@ -202,15 +210,18 @@ export async function findBestRecipeVideo(query: string, filters?: {
     let currentApiKey = YOUTUBE_API_KEY;
     let searchUrl = `${YOUTUBE_API_BASE_URL}/search?part=snippet&q=${encodeURIComponent(searchQuery)}&maxResults=3&type=video&key=${currentApiKey}`;
     
-    let searchResponse = await fetch(searchUrl);
+    console.log(`🌐 [YOUTUBE SEARCH] Making request to:`, searchUrl);
+    let searchResponse = await globalThis.fetch(searchUrl);
+    console.log(`📡 [YOUTUBE SEARCH] Response status:`, searchResponse.status);
     let searchData = await searchResponse.json() as any;
+    console.log(`📦 [YOUTUBE SEARCH] Response data:`, JSON.stringify(searchData, null, 2));
     
     // If primary key has quota issues, try backup key
     if (searchResponse.status === 403 && searchData.error?.errors?.[0]?.reason === 'quotaExceeded' && YOUTUBE_API_KEY_BACKUP) {
       console.log("Primary YouTube API key quota exceeded, switching to backup key");
       currentApiKey = YOUTUBE_API_KEY_BACKUP;
       searchUrl = `${YOUTUBE_API_BASE_URL}/search?part=snippet&q=${encodeURIComponent(searchQuery)}&maxResults=3&type=video&key=${currentApiKey}`;
-      searchResponse = await fetch(searchUrl);
+      searchResponse = await globalThis.fetch(searchUrl);
       searchData = await searchResponse.json() as any;
     }
     
@@ -221,7 +232,7 @@ export async function findBestRecipeVideo(query: string, filters?: {
       console.warn("No videos explicitly matching query terms, using most popular video");
       // Fall back to a simpler search if no results found
       const simpleSearchUrl = `${YOUTUBE_API_BASE_URL}/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=1&type=video&key=${currentApiKey}`;
-      const simpleSearchResponse = await fetch(simpleSearchUrl);
+      const simpleSearchResponse = await globalThis.fetch(simpleSearchUrl);
       const simpleSearchData = await simpleSearchResponse.json() as any;
       
       if (!simpleSearchData.items || simpleSearchData.items.length === 0) {
@@ -235,7 +246,7 @@ export async function findBestRecipeVideo(query: string, filters?: {
       
       // Get more detailed video information
       const videoUrl = `${YOUTUBE_API_BASE_URL}/videos?part=snippet,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`;
-      const videoResponse = await fetch(videoUrl);
+      const videoResponse = await globalThis.fetch(videoUrl);
       const videoData = await videoResponse.json() as any;
       
       if (!videoData.items || videoData.items.length === 0) {
@@ -262,7 +273,7 @@ export async function findBestRecipeVideo(query: string, filters?: {
       
       // Get more detailed video information including view count and duration
       const videoUrl = `${YOUTUBE_API_BASE_URL}/videos?part=snippet,statistics,contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
-      const videoResponse = await fetch(videoUrl);
+      const videoResponse = await globalThis.fetch(videoUrl);
       const videoData = await videoResponse.json() as any;
       
       if (!videoData.items || videoData.items.length === 0) {

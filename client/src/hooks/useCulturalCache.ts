@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 interface CulturalCacheData {
@@ -37,8 +37,14 @@ export function useCulturalCuisineData(cultures: string[]) {
   const [cacheData, setCacheData] = useState<CulturalCacheData[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Stabilize the cultures array to prevent infinite loops
+  const stableCultures = useMemo(() => {
+    if (!cultures || cultures.length === 0) return [];
+    return [...cultures];
+  }, [cultures?.join(',')]);
+
   useEffect(() => {
-    if (!cultures || cultures.length === 0) {
+    if (!stableCultures || stableCultures.length === 0) {
       setCacheData([]);
       return;
     }
@@ -47,7 +53,7 @@ export function useCulturalCuisineData(cultures: string[]) {
       setLoading(true);
       const results: CulturalCacheData[] = [];
 
-      for (const culture of cultures) {
+      for (const culture of stableCultures) {
         try {
           const response = await fetch(`/api/cultural-cuisine/${encodeURIComponent(culture)}`, {
             credentials: 'include',
@@ -95,7 +101,7 @@ export function useCulturalCuisineData(cultures: string[]) {
     };
 
     fetchCulturalData();
-  }, [cultures]);
+  }, [stableCultures]);
 
   return {
     cacheData,

@@ -7,7 +7,7 @@
     "node": ">=18.18.0"
   },
   "scripts": {
-    "dev": "concurrently \"tsx dev-server.ts\" \"vite\"",
+    "dev": "concurrently \"set NODE_ENV=development && tsx server/index.ts\" \"vite\"",
     "dev:frontend": "vite",
     "dev:api": "node dev-server.js",
     "build": "vite build",

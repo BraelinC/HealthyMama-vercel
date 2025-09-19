@@ -863,29 +863,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             recipe = youtubeRecipe;
           } else {
-            console.log("No suitable YouTube recipe found, falling back to Grok");
-            // Fall back to Grok if YouTube extraction fails
-            recipe = await generateRecipeWithGrok({
-              recipeType,
-              cuisine,
-              dietRestrictions,
-              cookingTime,
-              availableIngredients,
-              excludeIngredients,
-              description
-            });
+            console.log("No suitable YouTube recipe found");
+            return res.status(404).json({ message: "No suitable recipe found for your query. Please try a different search term." });
           }
         } catch (youtubeError) {
-          console.error("YouTube recipe extraction failed, falling back to Grok:", youtubeError);
-          // Fall back to Grok if YouTube search fails
-          recipe = await generateRecipeWithGrok({
-            recipeType,
-            cuisine,
-            dietRestrictions,
-            cookingTime,
-            availableIngredients,
-            excludeIngredients,
-            description
+          console.error("YouTube recipe extraction failed:", youtubeError);
+          return res.status(500).json({
+            message: "Recipe generation failed. Please try again with a different search term.",
+            error: youtubeError.message
           });
         }
       }
@@ -3835,11 +3820,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to get the actual database user ID
   async function getDatabaseUserId(req: any): Promise<string | null> {
+    console.log('🔍 [AUTH DEBUG] getDatabaseUserId called with req.user:', req.user ? {
+      id: req.user.id,
+      email: req.user.email,
+      exists: !!req.user
+    } : 'req.user is null/undefined');
+
     // For JWT auth, just return the user ID directly
     if (req.user?.id) {
+      console.log('✅ [AUTH DEBUG] User ID found:', req.user.id);
       return req.user.id;
     }
-    
+
+    console.log('❌ [AUTH DEBUG] No user ID found in request');
     return null;
   }
 
@@ -4154,9 +4147,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/profile/weight-based", authenticateToken, async (req: any, res) => {
+    console.log('🚀 [PROFILE DEBUG] PUT /api/profile/weight-based called');
+    console.log('🚀 [PROFILE DEBUG] Request body keys:', Object.keys(req.body));
+    console.log('🚀 [PROFILE DEBUG] Auth header present:', !!req.headers.authorization);
+
     try {
       const userId = await getDatabaseUserId(req);
+      console.log('🚀 [PROFILE DEBUG] Retrieved userId:', userId);
+
       if (!userId) {
+        console.log('❌ [PROFILE DEBUG] No userId found, returning 401');
         return res.status(401).json({ message: "User not authenticated" });
       }
 
@@ -4177,7 +4177,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('💾 Converted goalWeights to goals array:', goalsArray);
 
       // Check if profile exists first
+      console.log('🔍 [PROFILE DEBUG] Checking for existing profile for userId:', userId);
       const existingProfile = await storage.getProfile(userId);
+      console.log('🔍 [PROFILE DEBUG] Existing profile found:', !!existingProfile, existingProfile ? { id: existingProfile.id, profile_name: existingProfile.profile_name } : 'none');
       
       let profile;
       if (existingProfile) {

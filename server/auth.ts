@@ -292,19 +292,31 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    console.log("🔍 [getCurrentUser] Full user object from req.user:");
-    console.log("🔍 [getCurrentUser] User ID:", req.user.id);
-    console.log("🔍 [getCurrentUser] User Email:", req.user.email);
-    console.log("🔍 [getCurrentUser] User is_creator:", req.user.is_creator);
-    console.log("🔍 [getCurrentUser] User full_name:", req.user.full_name);
-    console.log("🔍 [getCurrentUser] Complete user object:", JSON.stringify(req.user, null, 2));
+    console.log("🔍 [getCurrentUser] Token user object from req.user:");
+    console.log("🔍 [getCurrentUser] Token User ID:", req.user.id);
+    console.log("🔍 [getCurrentUser] Token User is_creator:", req.user.is_creator);
 
-    const { password_hash, ...userWithoutPassword } = req.user;
-    
-    console.log("🔍 [getCurrentUser] Sending back user object:");
-    console.log("🔍 [getCurrentUser] userWithoutPassword.is_creator:", userWithoutPassword.is_creator);
-    console.log("🔍 [getCurrentUser] Complete response object:", JSON.stringify({ user: userWithoutPassword }, null, 2));
-    
+    // IMPORTANT: Fetch fresh user data from database instead of using token data
+    // This ensures we get the most up-to-date creator status and other fields
+    const freshUser = await storage.getUser(req.user.id);
+
+    if (!freshUser) {
+      console.log("🔍 [getCurrentUser] User not found in database");
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("🔍 [getCurrentUser] Fresh user data from database:");
+    console.log("🔍 [getCurrentUser] DB User ID:", freshUser.id);
+    console.log("🔍 [getCurrentUser] DB User Email:", freshUser.email);
+    console.log("🔍 [getCurrentUser] DB User is_creator:", freshUser.is_creator);
+    console.log("🔍 [getCurrentUser] DB User full_name:", freshUser.full_name);
+
+    const { password_hash, ...userWithoutPassword } = freshUser;
+
+    console.log("🔍 [getCurrentUser] Sending back fresh user object:");
+    console.log("🔍 [getCurrentUser] Fresh userWithoutPassword.is_creator:", userWithoutPassword.is_creator);
+    console.log("🔍 [getCurrentUser] Complete fresh response object:", JSON.stringify({ user: userWithoutPassword }, null, 2));
+
     res.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Get current user error:", error);
