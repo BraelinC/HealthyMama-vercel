@@ -9,7 +9,7 @@ import { users } from './shared/schema';
 import { eq } from 'drizzle-orm';
 
 const app = express();
-const PORT = 5005;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 5005;
 
 // Enable CORS
 app.use(cors());

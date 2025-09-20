@@ -877,6 +877,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save and return the recipe (for both fast and detailed modes)
       if (recipe) {
+        // Optional ingredient normalization via Groq (local check, no Groq for checking)
+        if (recipe.ingredients && recipe.ingredients.length > 0) {
+          try {
+            const threshold = parseInt(process.env.INGREDIENT_NORMALIZE_THRESHOLD || '20', 10);
+            // Build raw strings from current ingredients
+            const rawStringsForCheck = recipe.ingredients.map((ing: any) => {
+              if (typeof ing === 'string') return ing;
+              if (ing.display_text) return ing.display_text;
+              if (ing.name) return String(ing.name);
+              return '';
+            }).filter((s: string) => s.trim().length > 0);
+
+            const needsGroqNormalization = rawStringsForCheck.some((s: string) => s.trim().length > threshold);
+
+            if (needsGroqNormalization) {
+              console.log(`🧼 [ING NORM] Detected long ingredient lines (> ${threshold} chars). Normalizing with GPT-OSS-20B...`);
+              const { groqIngredientParser } = await import('./groqIngredientParser');
+              const parsed = await groqIngredientParser.parseIngredients(rawStringsForCheck);
+
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                // Map parsed ingredients back to our structure
+                const normalized = parsed.map((p: any) => {
+                  const display = p.amount ? `${p.amount} ${p.ingredient}`.trim() : p.ingredient;
+                  const measurements = [] as Array<{ quantity: number; unit: string }>;
+                  if (typeof p.quantity === 'number' && p.quantity > 0) {
+                    measurements.push({ quantity: p.quantity, unit: (p.unit || 'item').toString() });
+                  }
+                  return {
+                    name: String(p.ingredient || '').toLowerCase(),
+                    display_text: display,
+                    measurements
+                  };
+                });
+
+                // Only apply if normalization yields a reasonable list
+                if (normalized.length >= Math.min(3, recipe.ingredients.length)) {
+                  recipe.ingredients = normalized as any;
+                  console.log(`✅ [ING NORM] Normalized ${normalized.length} ingredients with GPT-OSS-20B`);
+                } else {
+                  console.log('⚠️ [ING NORM] Normalization returned too few items; keeping original ingredients');
+                }
+              } else {
+                console.log('⚠️ [ING NORM] Groq normalization returned empty; keeping original ingredients');
+              }
+            } else {
+              console.log('🧼 [ING NORM] Ingredients look concise; skipping Groq normalization');
+            }
+          } catch (normError) {
+            console.warn('⚠️ [ING NORM] Normalization step failed, continuing with original ingredients:', normError);
+          }
+        }
+
         // Add nutrition calculation using our new integrated calculator
         if (!skipNutrition && recipe.ingredients && recipe.ingredients.length > 0) {
           try {
@@ -1002,9 +1054,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!isInstructionsValid) {
           console.log('❌ [RECIPE GENERATION] Instructions FAILED validation');
           
-          // Try to generate proper instructions using GPT-OSS-120B
+          // Try to generate proper instructions using GPT-OSS-20B
           if (recipeToSave.transcript || recipeToSave.description) {
-            console.log('🤖 [RECIPE GENERATION] Attempting to generate instructions with GPT-OSS-120B');
+            console.log('🤖 [RECIPE GENERATION] Attempting to generate instructions with GPT-OSS-20B');
             try {
               const { groqInstructionGenerator } = await import('./groqInstructionGenerator');
               const generatedInstructions = await groqInstructionGenerator.generateInstructionsFromTranscript(
@@ -1016,7 +1068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               );
               
               if (generatedInstructions.length > 0) {
-                console.log(`✅ [RECIPE GENERATION] Generated ${generatedInstructions.length} instructions with GPT-OSS-120B`);
+                console.log(`✅ [RECIPE GENERATION] Generated ${generatedInstructions.length} instructions with GPT-OSS-20B`);
                 recipeToSave.instructions = generatedInstructions;
               } else {
                 console.log('⚠️ [RECIPE GENERATION] Could not generate instructions, using fallback message');
@@ -4764,12 +4816,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Object Storage Routes for Community Image Uploads
   app.post('/api/objects/upload', authenticateToken, async (req: any, res) => {
     try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error('Error getting upload URL:', error);
-      res.status(500).json({ error: 'Failed to get upload URL' });
+      console.log('📤 [API] Upload URL request from user:', req.user?.id);
+      console.log('📤 [API] Request body:', JSON.stringify(req.body, null, 2));
+      console.log('📤 [API] Request headers:', JSON.stringify(req.headers, null, 2));
+
+      const { fileName, contentType } = req.body;
+
+      if (!fileName || !contentType) {
+        return res.status(400).json({
+          error: 'Missing fileName or contentType',
+          hint: 'Send { fileName: "file.jpg", contentType: "image/jpeg" }'
+        });
+      }
+
+      // Check GCS configuration
+      const hasGCSConfig = !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.GCS_PROJECT_ID);
+      if (!hasGCSConfig) {
+        console.error('❌ [API] GCS not configured');
+        return res.status(500).json({
+          error: 'Upload service not configured',
+          details: 'Google Cloud Storage credentials missing'
+        });
+      }
+
+      const { objectStorageClient } = await import('./objectStorage');
+      const bucketName = 'healthymamabucket';
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(`uploads/${fileName}`);
+
+      // Generate v4 signed URL with exact content-type matching
+      const options = {
+        version: 'v4' as const,
+        action: 'write' as const,
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        contentType: contentType,
+      };
+
+      const [url] = await file.getSignedUrl(options);
+
+      console.log('✅ [API] Upload URL generated successfully for:', fileName);
+      res.json({ url });
+    } catch (error: any) {
+      console.error('❌ [API] Error getting upload URL:', error);
+
+      const errorResponse = {
+        error: 'Failed to get upload URL',
+        details: error?.message || String(error),
+        timestamp: new Date().toISOString()
+      };
+
+      if (app.get('env') === 'development') {
+        errorResponse.hint = 'Check GCS credentials and bucket configuration. Ensure PRIVATE_OBJECT_DIR points to a valid bucket path.';
+        errorResponse.stack = error?.stack;
+      }
+
+      res.status(500).json(errorResponse);
+    }
+  });
+
+  // Test endpoint to verify GCS permissions (no auth for debugging)
+  app.get('/api/objects/test-permissions', async (req: any, res) => {
+    try {
+      console.log('🧪 [TEST] Testing GCS bucket permissions');
+
+      const { objectStorageClient } = await import('./objectStorage');
+      const bucket = objectStorageClient.bucket('healthymamabucket');
+
+      // Test 1: Check if bucket exists and is accessible
+      const [exists] = await bucket.exists();
+      console.log('🧪 [TEST] Bucket exists:', exists);
+
+      if (!exists) {
+        return res.json({
+          success: false,
+          error: 'Bucket does not exist or is not accessible',
+          tests: { bucketExists: false }
+        });
+      }
+
+      // Test 2: Try to get bucket metadata (requires storage.buckets.get permission)
+      try {
+        const [metadata] = await bucket.getMetadata();
+        console.log('🧪 [TEST] Bucket metadata access: SUCCESS');
+      } catch (metadataError: any) {
+        console.log('🧪 [TEST] Bucket metadata access: FAILED', metadataError?.message);
+      }
+
+      // Test 3: Try to create a test file (requires storage.objects.create permission)
+      const testFile = bucket.file('test-permissions.txt');
+      try {
+        await testFile.save('Test file for permissions check');
+        console.log('🧪 [TEST] File creation: SUCCESS');
+
+        // Clean up test file
+        await testFile.delete();
+        console.log('🧪 [TEST] File deletion: SUCCESS');
+
+        res.json({
+          success: true,
+          message: 'All permissions are working correctly',
+          tests: {
+            bucketExists: true,
+            canCreateFiles: true,
+            canDeleteFiles: true
+          }
+        });
+      } catch (createError: any) {
+        console.log('🧪 [TEST] File creation: FAILED', createError?.message);
+        res.json({
+          success: false,
+          error: 'Cannot create files in bucket - check storage.objects.create permission',
+          details: createError?.message || 'Unknown error',
+          tests: {
+            bucketExists: true,
+            canCreateFiles: false
+          }
+        });
+      }
+
+    } catch (error: any) {
+      console.error('❌ [TEST] GCS permissions test failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to test GCS permissions',
+        details: error?.message || 'Unknown error'
+      });
     }
   });
 

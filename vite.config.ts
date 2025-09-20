@@ -24,8 +24,17 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
     },
     server: {
+      host: true,
+      hmr: {
+        overlay: true,
+        // Allow overriding via env if running behind a proxy (e.g., vercel dev)
+        host: env.VITE_HMR_HOST || undefined,
+        clientPort: env.VITE_HMR_CLIENT_PORT ? Number(env.VITE_HMR_CLIENT_PORT) : undefined,
+        protocol: env.VITE_HMR_PROTOCOL || undefined,
+      },
       proxy: {
         '/api': {
+          // Match the Express+Vite integrated dev server
           target: 'http://localhost:5002',
           changeOrigin: true,
           secure: false,

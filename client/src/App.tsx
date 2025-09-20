@@ -134,8 +134,9 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
 }
 
 function AppTabBar() {
-  const [location] = useLocation();
-  
+  const [location, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
+
   const tabs = [
     { icon: <HandPlatter className="w-5 h-5" />, label: "Search", path: "/search" },
     { icon: <ChefHat className="w-5 h-5" />, label: "Home", path: "/" },
@@ -143,14 +144,34 @@ function AppTabBar() {
     { icon: <Bot className="w-5 h-5" />, label: "AI Chat", path: "/chat" },
     { icon: <Users className="w-5 h-5" />, label: "Communities", path: "/communities" },
   ];
-  
+
+  const isCommunitiesActive = location.startsWith("/communities") || location.startsWith("/community/");
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] flex justify-around py-3 z-40 border-t">
       {tabs.map((tab) => (
-        <Link 
+        <Link
           key={tab.path}
           to={tab.path}
-          className={`flex flex-col items-center px-4 py-2 transition-colors duration-150 ${location === tab.path ? "text-primary font-medium" : "text-gray-500 hover:text-gray-700"}`}
+          className={`flex flex-col items-center px-4 py-2 transition-colors duration-150 ${
+            tab.label === "Communities"
+              ? (isCommunitiesActive ? "text-primary font-medium" : "text-gray-500 hover:text-gray-700")
+              : (location === tab.path ? "text-primary font-medium" : "text-gray-500 hover:text-gray-700")
+          }`}
+          onClick={(e) => {
+            if (tab.label === "Communities") {
+              try {
+                const uid = (user as any)?.id || (user as any)?.user?.id;
+                if (isAuthenticated && uid) {
+                  const lastId = localStorage.getItem(`lastCommunityId:${uid}`);
+                  if (lastId) {
+                    e.preventDefault();
+                    setLocation(`/community/${lastId}`);
+                  }
+                }
+              } catch {}
+            }
+          }}
         >
           {tab.icon}
           <span className="text-xs mt-1">{tab.label}</span>

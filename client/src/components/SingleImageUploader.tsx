@@ -21,6 +21,7 @@ export function SingleImageUploader({ onImageUploaded, className = "" }: SingleI
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ contentType: file.type }),
       });
 
       if (!response.ok) {

@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 import { deduplicateIngredients, cleanIngredientList } from "./ingredientDeduplicator";
 
 interface RecipeGenerationParams {
@@ -85,49 +85,47 @@ function buildPromptFromParams(params: RecipeGenerationParams): string {
  * Generate a recipe using the Grok API based on user preferences
  */
 export async function generateRecipeWithGrok(params: RecipeGenerationParams) {
-  const API_KEY = process.env.XAI_API_KEY;
+  const API_KEY = process.env.GROQ_API_KEY;
   if (!API_KEY) {
-    throw new Error("Grok API key is required. Set the XAI_API_KEY environment variable.");
+    throw new Error("GROQ_API_KEY is required. Set the GROQ_API_KEY environment variable.");
   }
-  
-  const openai = new OpenAI({ baseURL: "https://api.x.ai/v1", apiKey: API_KEY });
-  
+
+  const groq = new Groq({ apiKey: API_KEY });
   const prompt = buildPromptFromParams(params);
-  
+
   try {
-    const response = await openai.chat.completions.create({
-      model: "grok-2-1212",
+    const response = await groq.chat.completions.create({
+      model: "openai/gpt-oss-20b",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
+      temperature: 0.4
     });
-    
-    const recipeContent = response.choices[0].message.content;
+
+    const recipeContent = response.choices[0]?.message?.content;
     if (!recipeContent) {
-      throw new Error("Empty response from Grok API");
+      throw new Error("Empty response from Groq model");
     }
-    
+
     // Parse the JSON response
     const recipeData = JSON.parse(recipeContent);
-    
+
     // Keep ingredients as-is for now to avoid data loss
     if (recipeData.ingredients && Array.isArray(recipeData.ingredients)) {
       console.log(`Generated recipe with ${recipeData.ingredients.length} ingredients`);
     }
-    
+
     // Generate a relevant image URL based on recipe type and name
     let imageCategory = recipeData.cuisine?.toLowerCase() || '';
     if (!imageCategory || imageCategory === 'any cuisine') {
-      // If no cuisine is specified, use the recipe type or diet
       imageCategory = recipeData.diet?.toLowerCase() || recipeData.title.split(' ')[0].toLowerCase();
     }
-    
-    // Get a relevant food image from Unsplash based on the recipe
+
     const recipeName = encodeURIComponent(recipeData.title.toLowerCase());
     recipeData.image_url = `https://source.unsplash.com/1200x900/?food,${recipeName},${imageCategory},cooking`;
-    
+
     return recipeData;
   } catch (error: any) {
-    console.error("Error generating recipe with Grok:", error);
+    console.error("Error generating recipe with Groq (via GROQ SDK):", error);
     throw new Error(`Failed to generate recipe: ${error.message}`);
   }
 }

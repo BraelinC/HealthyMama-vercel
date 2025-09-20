@@ -16,23 +16,40 @@ export function ImageUploader({ onImagesChange, maxImages = 4, className = "" }:
 
   const uploadImage = async (file: File): Promise<string> => {
     try {
-      // Get upload URL from backend
+      console.log('📤 [ImageUploader] Starting upload for:', file.name, 'Type:', file.type, 'Size:', file.size);
+
+      // 1. Get signed URL from backend
       const response = await fetch('/api/objects/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type
+        }),
       });
 
       if (!response.ok) {
+        let details = '';
+        try {
+          const errBody = await response.json();
+          details = errBody?.error || errBody?.message || JSON.stringify(errBody);
+        } catch {
+          try {
+            details = await response.text();
+          } catch {}
+        }
+        console.error('Upload URL request failed', { status: response.status, details });
         throw new Error('Failed to get upload URL');
       }
 
-      const { uploadURL } = await response.json();
+      const { url } = await response.json();
+      console.log('📤 [ImageUploader] Got signed URL:', url);
 
-      // Upload file directly to object storage
-      const uploadResponse = await fetch(uploadURL, {
+      // 2. Upload file directly to Google Cloud Storage
+      const uploadResponse = await fetch(url, {
         method: 'PUT',
         body: file,
         headers: {
@@ -40,18 +57,17 @@ export function ImageUploader({ onImagesChange, maxImages = 4, className = "" }:
         },
       });
 
+      console.log('📤 [ImageUploader] Upload response status:', uploadResponse.status);
+
       if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload failed:', errorText);
         throw new Error('Failed to upload image');
       }
 
-      // Return the object path that can be accessed via our server
-      // Extract the object ID from the upload URL and return the server path
-      const url = new URL(uploadURL);
-      const objectPath = url.pathname;
-      const objectId = objectPath.split('/').pop()?.split('?')[0];
-      
-      const serverPath = `/objects/uploads/${objectId}`;
-      console.log('Upload successful. Server path:', serverPath);
+      // Return the server path for accessing the uploaded file
+      const serverPath = `/objects/uploads/${file.name}`;
+      console.log('✅ Upload successful. Server path:', serverPath);
       return serverPath;
     } catch (error) {
       console.error('Upload error:', error);

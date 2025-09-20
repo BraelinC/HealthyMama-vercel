@@ -13,7 +13,7 @@ class GroqService {
   }
   
   async extractStructuredRecipe(cleanedText, imageUrl = null) {
-    console.log(`🧠 Using GPT-OSS-120B to extract structured recipe data`);
+    console.log(`🧠 Using GPT-OSS-20B to extract structured recipe data`);
     
     const schema = {
       title: "string",
@@ -51,7 +51,7 @@ JSON Response:`;
     
     try {
       const completion = await this.client.chat.completions.create({
-        model: "openai/gpt-oss-120b",
+        model: "openai/gpt-oss-20b",
         messages: [
           {"role": "user", "content": prompt}
         ],
@@ -60,7 +60,7 @@ JSON Response:`;
       });
       
       const response = completion.choices[0].message.content.trim();
-      console.log(`🧠 GPT-OSS-120B response length: ${response.length} characters`);
+      console.log(`🧠 GPT-OSS-20B response length: ${response.length} characters`);
       
       // Try to parse the JSON response
       try {
@@ -100,7 +100,7 @@ Return ONLY the corrected JSON:`;
     
     try {
       const completion = await this.client.chat.completions.create({
-        model: "openai/gpt-oss-120b",
+        model: "openai/gpt-oss-20b",
         messages: [
           {"role": "user", "content": correctionPrompt}
         ],

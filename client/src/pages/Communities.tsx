@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, TrendingUp, Plus, Search, ChefHat, DollarSign, Globe, Heart, X } from "lucide-react";
+import { Users, TrendingUp, Plus, Search, ChefHat, DollarSign, Globe, Heart, X, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface Community {
   id: number;
@@ -81,6 +82,7 @@ const categoryColors = {
 
 export default function Communities() {
   const { user, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,14 +98,6 @@ export default function Communities() {
   // Handle both possible data structures: { user: {...} } or direct { ... }
   const isCreator = Boolean(user?.user?.is_creator || user?.is_creator);
   
-  // Debug logging to check user data structure
-  console.log('🔍 [Communities Debug] Complete User data:', JSON.stringify(user, null, 2));
-  console.log('🔍 [Communities Debug] isCreator:', isCreator);
-  console.log('🔍 [Communities Debug] user?.user?.is_creator:', user?.user?.is_creator);
-  console.log('🔍 [Communities Debug] user?.is_creator:', user?.is_creator);
-  console.log('🔍 [Communities Debug] isAuthenticated:', isAuthenticated);
-  console.log('🔍 [Communities Debug] typeof user?.user?.is_creator:', typeof user?.user?.is_creator);
-  console.log('🔍 [Communities Debug] typeof user?.is_creator:', typeof user?.is_creator);
 
   // Creator toggle mutation
   const toggleCreatorMutation = useMutation({
@@ -177,6 +171,22 @@ export default function Communities() {
     enabled: isAuthenticated, // Only fetch when user is authenticated
   });
 
+  // Auto-redirect to last visited community if present
+  useEffect(() => {
+    try {
+      if (!isAuthenticated) return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('list') === '1' || params.get('stay') === '1') return;
+      const uid = (user as any)?.id || (user as any)?.user?.id;
+      if (!uid) return;
+      const key = `lastCommunityId:${uid}`;
+      const lastId = localStorage.getItem(key);
+      if (lastId) {
+        setLocation(`/community/${lastId}`);
+      }
+    } catch {}
+  }, [isAuthenticated]);
+
   // Fetch trending meal plans
   const { data: trendingPlans = [] } = useQuery({
     queryKey: ["/api/trending-meal-plans"],
@@ -186,6 +196,22 @@ export default function Communities() {
       return response.json();
     },
   });
+
+  // Handle query params for list/create behavior
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('create') === '1') {
+        console.log('🟣 [COMMUNITIES QUERY] create=1 detected');
+        if (isAuthenticated) {
+          setShowCreateModal(true);
+          toast({ title: 'Create Community', description: 'Opening creation form' });
+        } else {
+          toast({ title: 'Sign in required', description: 'Please log in to create a community', variant: 'destructive' });
+        }
+      }
+    } catch {}
+  }, [isAuthenticated]);
 
   // Fetch top creators
   const { data: topCreators = [] } = useQuery({
@@ -234,9 +260,62 @@ export default function Communities() {
         <div className="mb-8">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-emerald-600 bg-clip-text text-transparent mb-2">
-                Communities
-              </h1>
+              {/* Communities Title with Dropdown */}
+              <div className="flex items-center gap-2 mb-2">
+                <DropdownMenu
+                  onOpenChange={(open) => {
+                    console.log('🟣 [COMMUNITIES DROPDOWN] open:', open);
+                  }}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 text-4xl font-bold bg-gradient-to-r from-purple-600 to-emerald-600 bg-clip-text text-transparent mb-0 focus:outline-none cursor-pointer"
+                      onClick={() => console.log('🟣 [COMMUNITIES DROPDOWN] trigger clicked')}
+                      aria-haspopup="menu"
+                      aria-expanded={false}
+                    >
+                      <span>Communities</span>
+                      <ChevronDown className="w-7 h-7 text-purple-600/80" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    sideOffset={8}
+                    className="z-[2147483647] pointer-events-auto w-56"
+                  >
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => {
+                        console.log('🟣 [DISCOVER] clicked');
+                        toast({ title: 'Discover Communities', description: 'Showing all communities' });
+                        setSearchQuery("");
+                        setSelectedCategory(undefined);
+                        setLocation('/communities?list=1');
+                      }}
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      Discover Communities
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => {
+                        console.log('🟣 [CREATE] clicked');
+                        if (!isAuthenticated) {
+                          toast({ title: 'Sign in required', description: 'Please log in to create a community', variant: 'destructive' });
+                          return;
+                        }
+                        toast({ title: 'Create Community', description: 'Opening community creation form' });
+                        setShowCreateModal(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Community
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <p className="text-gray-600 text-lg">
                 Join communities to discover and share amazing meal plans with creators and food enthusiasts
               </p>

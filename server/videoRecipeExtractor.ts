@@ -2,11 +2,15 @@
 // import fetch from 'node-fetch';
 import { groqValidator } from './groqValidator';
 import { parseIngredientsWithGPT } from './gptIngredientParser';
+import { GroqIngredientParser } from './groqIngredientParser';
 import { deduplicateIngredients, cleanIngredientList } from "./ingredientDeduplicator";
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_KEY_BACKUP = process.env.YOUTUBE_API_KEY_BACKUP;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
+
+// Initialize GROQ ingredient parser
+const groqIngredientParser = new GroqIngredientParser();
 
 // Types
 interface YouTubeVideoInfo {
@@ -492,50 +496,24 @@ async function getVideoComments(videoId: string): Promise<string[]> {
  */
 async function generateIngredientsFromTitle(videoTitle: string): Promise<string[]> {
   try {
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "grok-2-1212",
-        messages: [{
-          role: "system",
-          content: "You are a culinary expert. Generate realistic ingredient lists for recipes based on video titles. Include proper measurements and quantities for typical serving sizes."
-        }, {
-          role: "user",
-          content: `Generate a complete ingredient list for this recipe: "${videoTitle}". 
+    // Use fallback approach since X.AI is not available
+    console.log(`🔍 [FALLBACK] Generating basic ingredients from title: "${videoTitle}"`);
 
-Include:
-- Proper measurements (cups, tablespoons, teaspoons, ounces, pounds, etc.)
-- Realistic quantities for 4-6 servings
-- Common ingredients that would be used in this dish
-- Seasonings and basic cooking ingredients
+    const title = videoTitle.toLowerCase();
+    const basicIngredients: string[] = [];
 
-Return as JSON: {"ingredients": ["2 lbs ground beef", "1 large onion, diced", "2 cups beef broth", etc.]}`
-        }],
-        response_format: { type: "json_object" },
-        max_tokens: 800
-      })
-    });
-
-    if (!response.ok) {
-      console.log('Grok ingredient generation failed');
-      return [];
+    // Pattern matching for common recipe types
+    if (title.includes('pasta')) {
+      basicIngredients.push('1 lb pasta', '2 tbsp olive oil', '3 cloves garlic', '1 onion', 'salt and pepper');
+    } else if (title.includes('chicken')) {
+      basicIngredients.push('2 lbs chicken', '2 tbsp oil', '1 onion', '2 cloves garlic', 'salt and pepper');
+    } else if (title.includes('protein') || title.includes('oatmeal')) {
+      basicIngredients.push('1 cup oats', '2 cups milk', '1 scoop protein powder', '1 tbsp honey', '1/2 cup berries');
+    } else {
+      basicIngredients.push('main ingredient', 'cooking oil', 'seasonings');
     }
 
-    const result = await response.json();
-    const content = result.choices[0]?.message?.content;
-    
-    if (content) {
-      const parsed = JSON.parse(content);
-      if (parsed.ingredients && Array.isArray(parsed.ingredients)) {
-        return parsed.ingredients;
-      }
-    }
-    
-    return [];
+    return basicIngredients;
   } catch (error) {
     console.error('Grok ingredient generation error:', error);
     return [];
@@ -543,59 +521,124 @@ Return as JSON: {"ingredients": ["2 lbs ground beef", "1 large onion, diced", "2
 }
 
 /**
- * Extract ingredients using LLaVA-Chef style AI analysis
+ * Extract ingredients using GROQ GPT-OSS-20B AI analysis
  */
-async function extractIngredientsWithLLaVA(text: string): Promise<string[]> {
+async function extractIngredientsWithGroq(text: string): Promise<string[]> {
   if (!text) return [];
-  
+
   try {
-    // Use Grok API to analyze the text like LLaVA-Chef would
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "grok-2-1212",
-        messages: [{
-          role: "system",
-          content: "You are LLaVA-Chef, an AI specialized in extracting recipe ingredients from text. Extract ingredients with proper measurements and formatting."
-        }, {
-          role: "user",
-          content: `Analyze this YouTube video description and extract ONLY the ingredients with their measurements. Format each ingredient properly with quantity and unit when available.
+    console.log('🔍 [GROQ] Starting ingredient extraction from text...');
 
-Text to analyze:
-${text}
+    // Extract ingredients as strings using GROQ parsing
+    const ingredients = await parseIngredientsWithGroq(text);
 
-Return as JSON: {"ingredients": ["1 cup flour", "2 large eggs", "1/2 tsp salt", etc.]}`
-        }],
-        response_format: { type: "json_object" },
-        max_tokens: 800
-      })
-    });
-
-    if (!response.ok) {
-      console.log('LLaVA analysis failed, using simple extraction');
-      return [];
+    if (ingredients.length > 0) {
+      console.log(`🎯 [GROQ] Successfully extracted ${ingredients.length} ingredients`);
+      return ingredients;
     }
 
-    const result = await response.json();
-    const content = result.choices[0]?.message?.content;
-    
-    if (content) {
-      const parsed = JSON.parse(content);
-      if (parsed.ingredients && Array.isArray(parsed.ingredients)) {
-        console.log(`LLaVA-Chef extracted ${parsed.ingredients.length} ingredients`);
-        return parsed.ingredients;
-      }
-    }
-    
+    console.log('⚠️ [GROQ] No ingredients found in text');
     return [];
   } catch (error) {
-    console.error('LLaVA-Chef extraction error:', error);
+    console.error('❌ [GROQ] Ingredient extraction error:', error);
     return [];
   }
+}
+
+/**
+ * Parse ingredients from text using GROQ GPT-OSS-20B
+ */
+async function parseIngredientsWithGroq(text: string): Promise<string[]> {
+  if (!text.trim()) return [];
+
+  try {
+    // Split text into manageable chunks for GROQ processing
+    const chunks = splitTextIntoChunks(text, 2000);
+    const allIngredients: string[] = [];
+
+    for (const chunk of chunks) {
+      // Extract ingredients from this chunk using GROQ
+      const extractedIngredients = await extractIngredientsFromChunk(chunk);
+      allIngredients.push(...extractedIngredients);
+    }
+
+    // Deduplicate and clean the ingredients
+    const uniqueIngredients = Array.from(new Set(allIngredients))
+      .filter(ing => ing.trim().length > 2)
+      .slice(0, 20); // Limit to 20 ingredients max
+
+    return uniqueIngredients;
+  } catch (error) {
+    console.error('Error parsing ingredients with GROQ:', error);
+    return [];
+  }
+}
+
+/**
+ * Extract ingredients from a text chunk using GROQ client
+ */
+async function extractIngredientsFromChunk(text: string): Promise<string[]> {
+  if (!groqIngredientParser) {
+    console.error('GROQ ingredient parser not initialized');
+    return [];
+  }
+
+  try {
+    // Use a simple approach - split text into potential ingredient lines
+    const lines = text.split(/\n|•|\*|\d+\.|\d+\)/)
+      .map(line => line.trim())
+      .filter(line => line.length > 3);
+
+    // Filter lines that look like ingredients
+    const potentialIngredients = lines.filter(line => {
+      const lowerLine = line.toLowerCase();
+      // Look for measurement patterns or common ingredient words
+      return (
+        /\d+/.test(line) || // Contains numbers
+        /cup|tsp|tbsp|oz|lb|gram|ml|liter/i.test(line) || // Contains units
+        /salt|pepper|oil|butter|flour|sugar|egg|milk|water|onion|garlic/i.test(line) // Common ingredients
+      );
+    });
+
+    if (potentialIngredients.length > 0) {
+      // Use GROQ to parse and clean the potential ingredients
+      const parsedIngredients = await groqIngredientParser.parseIngredients(potentialIngredients);
+      return parsedIngredients.map(parsed => parsed.originalText);
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error extracting ingredients from chunk:', error);
+    return [];
+  }
+}
+
+/**
+ * Split text into manageable chunks
+ */
+function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
+  if (text.length <= maxChunkSize) return [text];
+
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    if (currentChunk.length + line.length > maxChunkSize) {
+      if (currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = '';
+      }
+    }
+    currentChunk += line + '\n';
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
 }
 
 /**
@@ -679,6 +722,33 @@ function fallbackExtraction(text: string): string[] {
 }
 
 /**
+ * Extract instructions from text using pattern matching (fallback method)
+ */
+function extractInstructionsFromText(text: string): string[] {
+  if (!text) return [];
+
+  const instructions: string[] = [];
+  const lines = text.split(/\n|\r/).map(line => line.trim()).filter(line => line.length > 0);
+
+  for (const line of lines) {
+    // Look for numbered steps or action words
+    if (
+      /^\d+\./.test(line) || // "1. Add ingredients"
+      /^step\s*\d+/i.test(line) || // "Step 1"
+      /^first|^then|^next|^finally|^after/i.test(line) || // Sequence words
+      /^add|^mix|^cook|^bake|^heat|^stir|^combine|^place|^remove/i.test(line) // Action words
+    ) {
+      const cleanStep = line.replace(/^\d+\.\s*|^step\s*\d+[:\.]?\s*/i, '').trim();
+      if (cleanStep.length > 10) {
+        instructions.push(cleanStep);
+      }
+    }
+  }
+
+  return instructions.slice(0, 10); // Limit to 10 steps
+}
+
+/**
  * Extract instructions using LLaVA-Chef with video transcript
  */
 async function extractInstructionsWithLLaVA(transcript: string, description: string): Promise<string[]> {
@@ -711,42 +781,11 @@ async function extractInstructionsWithLLaVA(transcript: string, description: str
     // Process chunks in parallel for faster extraction
     const chunkPromises = chunks.map(async (chunk, index) => {
       try {
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: "grok-2-1212",
-            messages: [{
-              role: "system",
-              content: "You are LLaVA-Chef, an AI specialized in extracting cooking instructions from video transcripts. Extract clear, actionable cooking steps in chronological order."
-            }, {
-              role: "user",
-              content: `Extract cooking instructions from this ${transcript ? 'video transcript' : 'description'} chunk ${index + 1}/${chunks.length}. Format as clear numbered steps. Focus ONLY on actionable cooking steps, ignore introductions, sponsorships, or unrelated content.
+        // Use fallback instruction extraction since X.AI is not available
+        console.log(`🔍 [FALLBACK] Extracting instructions from chunk ${index + 1}`);
 
-${chunk}
-
-Return as JSON: {"instructions": ["Step description 1", "Step description 2", etc.]}`
-            }],
-            response_format: { type: "json_object" },
-            max_tokens: 1000
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const content = result.choices[0]?.message?.content;
-          
-          if (content) {
-            const parsed = JSON.parse(content);
-            if (parsed.instructions && Array.isArray(parsed.instructions)) {
-              return { index, instructions: parsed.instructions };
-            }
-          }
-        }
-        return { index, instructions: [] };
+        const fallbackInstructions = extractInstructionsFromText(chunk);
+        return { index, instructions: fallbackInstructions };
       } catch (error) {
         console.error(`Error processing chunk ${index}:`, error);
         return { index, instructions: [] };
@@ -1192,7 +1231,7 @@ export async function getRecipeFromYouTube(query: string, filters?: {
     
     // First try description and transcript for ingredients using LLaVA-Chef
     const textForIngredients = transcript || videoInfo.description;
-    const descriptionIngredients = await extractIngredientsWithLLaVA(textForIngredients);
+    const descriptionIngredients = await extractIngredientsWithGroq(textForIngredients);
     if (descriptionIngredients.length > 0) {
       console.log(`Found ${descriptionIngredients.length} ingredients in video description`);
       // Clean up ingredients to fix duplicate measurements (but preserve mixed fractions like "1 1/2")
@@ -1219,7 +1258,7 @@ export async function getRecipeFromYouTube(query: string, filters?: {
         console.log(`Checking ${pinnedComments.length} pinned comments for ingredients`);
         
         for (const comment of pinnedComments) {
-          const commentIngredients = await extractIngredientsWithLLaVA(comment);
+          const commentIngredients = await extractIngredientsWithGroq(comment);
           if (commentIngredients.length > 2) {  // Must have at least 3 ingredients to be valid
             console.log(`Found ${commentIngredients.length} ingredients in pinned comment`);
             ingredients = commentIngredients;
@@ -1287,15 +1326,15 @@ export async function getRecipeFromYouTube(query: string, filters?: {
     
     // Ingredient pipeline simplified above; no further upgrades here
 
-    // Step 7: Validate instructions; if missing or invalid, generate with GPT-OSS-120B
+    // Step 7: Validate instructions; if missing or invalid, generate with GPT-OSS-20B
     const areValid = await groqValidator.validateInstructions(instructions);
     if (instructions.length === 0 || !areValid) {
-      console.log("⚠️ [YOUTUBE] No instructions extracted, attempting GPT-OSS-120B generation...");
+      console.log("⚠️ [YOUTUBE] No instructions extracted, attempting GPT-OSS-20B generation...");
       console.log(`📊 [YOUTUBE] Available text sources:`);
       console.log(`  - Transcript: ${transcript ? `${transcript.length} chars` : 'NOT AVAILABLE'}`);
       console.log(`  - Description: ${videoInfo.description ? `${videoInfo.description.length} chars` : 'NOT AVAILABLE'}`);
       
-      // Try to generate instructions using GPT-OSS-120B
+      // Try to generate instructions using GPT-OSS-20B
       try {
         const { groqInstructionGenerator } = await import('./groqInstructionGenerator');
         
@@ -1303,7 +1342,7 @@ export async function getRecipeFromYouTube(query: string, filters?: {
         const textToUse = transcript || videoInfo.description || '';
         
         if (textToUse.length > 50) {
-          console.log(`🤖 [YOUTUBE] Using ${transcript ? 'TRANSCRIPT' : 'DESCRIPTION'} for GPT-OSS-120B generation`);
+          console.log(`🤖 [YOUTUBE] Using ${transcript ? 'TRANSCRIPT' : 'DESCRIPTION'} for GPT-OSS-20B generation`);
           console.log(`📝 [YOUTUBE] Text preview: "${textToUse.substring(0, 200)}..."`);
           
           instructions = await groqInstructionGenerator.generateInstructionsFromTranscript(
@@ -1313,18 +1352,18 @@ export async function getRecipeFromYouTube(query: string, filters?: {
           );
           
           if (instructions.length > 0) {
-            console.log(`✅ [YOUTUBE] GPT-OSS-120B successfully generated ${instructions.length} instructions`);
+            console.log(`✅ [YOUTUBE] GPT-OSS-20B successfully generated ${instructions.length} instructions`);
             instructions.forEach((inst, idx) => {
               console.log(`  ${idx + 1}. ${inst.substring(0, 80)}...`);
             });
           } else {
-            console.log(`❌ [YOUTUBE] GPT-OSS-120B failed to generate instructions`);
+            console.log(`❌ [YOUTUBE] GPT-OSS-20B failed to generate instructions`);
           }
         } else {
           console.log(`❌ [YOUTUBE] Insufficient text for instruction generation (only ${textToUse.length} chars)`);
         }
       } catch (genError) {
-        console.error('❌ [YOUTUBE] Error generating instructions with GPT-OSS-120B:', genError);
+        console.error('❌ [YOUTUBE] Error generating instructions with GPT-OSS-20B:', genError);
       }
       
       // If still no instructions, leave empty for validation to handle

@@ -18,7 +18,7 @@ export class GroqInstructionGenerator {
     const groqApiKey = process.env.GROQ_API_KEY;
     
     if (groqApiKey) {
-      console.log('🚀 [GROQ INSTRUCTION GEN] Initializing with GPT-OSS-120B');
+      console.log('🚀 [GROQ INSTRUCTION GEN] Initializing with GPT-OSS-20B');
       console.log('✅ [GROQ INSTRUCTION GEN] API key loaded successfully');
       this.client = new Groq({
         apiKey: groqApiKey
@@ -46,7 +46,7 @@ export class GroqInstructionGenerator {
     }
 
     try {
-      console.log('📡 [GROQ INSTRUCTION GEN] Calling GPT-OSS-120B to generate instructions...');
+      console.log('📡 [GROQ INSTRUCTION GEN] Calling GPT-OSS-20B to generate instructions...');
       const startTime = Date.now();
       
       const ingredientList = ingredients?.join(', ') || 'standard ingredients';
@@ -78,14 +78,14 @@ Rules:
 Return ONLY the numbered steps, nothing else.`;
 
       const completion = await this.client.chat.completions.create({
-        model: "openai/gpt-oss-120b",  // Using the larger 120B model for better quality
+        model: "openai/gpt-oss-20b",
         messages: [{
           role: "user",
           content: prompt
         }],
         temperature: 0.3,
         max_tokens: 1800,
-        reasoning_effort: "medium"  // Add reasoning for better instruction generation
+        reasoning_effort: "medium"
       });
 
       const response = completion.choices[0]?.message?.content || '';

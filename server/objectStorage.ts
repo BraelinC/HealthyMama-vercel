@@ -2,26 +2,31 @@ import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+// Initialize GCS client with service account credentials
+export const objectStorageClient = (() => {
+  try {
+    const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const projectId = process.env.GCS_PROJECT_ID;
 
-// The object storage client is used to interact with the object storage service.
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+    if (!serviceAccountJson || !projectId) {
+      console.warn('⚠️ [GCS] Missing credentials - uploads will not work');
+      console.warn('⚠️ [GCS] Set GOOGLE_SERVICE_ACCOUNT_JSON and GCS_PROJECT_ID environment variables');
+      // Return a basic client that will fail gracefully
+      return new Storage();
+    }
+
+    const credentials = JSON.parse(serviceAccountJson);
+    console.log('✅ [GCS] Initializing with service account for project:', projectId);
+
+    return new Storage({
+      credentials,
+      projectId,
+    });
+  } catch (error) {
+    console.error('❌ [GCS] Failed to initialize:', error);
+    throw new Error('Failed to initialize Google Cloud Storage client');
+  }
+})();
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -119,27 +124,37 @@ export class ObjectStorageService {
   }
 
   // Gets the upload URL for an object entity.
-  async getObjectEntityUploadURL(): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
+  async getObjectEntityUploadURL(contentType?: string): Promise<string> {
+    try {
+      const privateObjectDir = this.getPrivateObjectDir();
+      if (!privateObjectDir) {
+        throw new Error(
+          "PRIVATE_OBJECT_DIR not set. Set PRIVATE_OBJECT_DIR to your GCS bucket root (e.g., /my-bucket). Uploads are stored under /uploads."
+        );
+      }
+
+      const objectId = randomUUID();
+      const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+
+      console.log(`📤 [GCS] Generating upload URL for: ${fullPath}`);
+
+      const { bucketName, objectName } = parseObjectPath(fullPath);
+
+      // Sign URL for PUT method with 15-minute TTL
+      const signedUrl = await signObjectURL({
+        bucketName,
+        objectName,
+        method: "PUT",
+        ttlSec: 900,
+        contentType,
+      });
+
+      console.log(`✅ [GCS] Upload URL generated successfully for object: ${objectId}`);
+      return signedUrl;
+    } catch (error) {
+      console.error('❌ [GCS] Failed to generate upload URL:', error);
+      throw error;
     }
-
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    // Sign URL for PUT method with TTL
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
   }
 
   // Gets the object entity file from the object path.
@@ -218,8 +233,15 @@ function parseObjectPath(path: string): {
     throw new Error("Invalid path: must contain at least a bucket name");
   }
 
-  const bucketName = pathParts[1];
+  // Remove leading slash from bucket name if present
+  let bucketName = pathParts[1];
+  if (bucketName.startsWith("/")) {
+    bucketName = bucketName.slice(1);
+  }
+
   const objectName = pathParts.slice(2).join("/");
+
+  console.log(`🪣 [GCS] Parsed path "${path}" -> bucket: "${bucketName}", object: "${objectName}"`);
 
   return {
     bucketName,
@@ -232,35 +254,49 @@ async function signObjectURL({
   objectName,
   method,
   ttlSec,
+  contentType,
 }: {
   bucketName: string;
   objectName: string;
   method: "GET" | "PUT" | "DELETE" | "HEAD";
   ttlSec: number;
+  contentType?: string;
 }): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
-    );
-  }
+  try {
+    console.log(`🔗 [GCS] Signing URL for ${method} ${bucketName}/${objectName} (TTL: ${ttlSec}s)`);
 
-  const { signed_url: signedURL } = await response.json();
-  return signedURL;
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+
+    // Map HTTP methods to GCS signed URL actions
+    const actionMap: Record<string, 'read' | 'write' | 'delete'> = {
+      GET: 'read',
+      HEAD: 'read',
+      PUT: 'write',
+      DELETE: 'delete',
+    };
+
+    const action = actionMap[method];
+    if (!action) {
+      throw new Error(`Unsupported HTTP method for signing: ${method}`);
+    }
+
+    // Use v2 signing; include contentType if provided to avoid signature mismatch on PUT
+    const signOptions: any = {
+      version: 'v2',
+      action,
+      expires: Date.now() + ttlSec * 1000,
+    };
+    if (contentType && action === 'write') {
+      signOptions.contentType = contentType;
+    }
+
+    const [signedUrl] = await file.getSignedUrl(signOptions);
+
+    console.log(`✅ [GCS] Successfully generated signed URL for ${bucketName}/${objectName}`);
+    return signedUrl;
+  } catch (error) {
+    console.error(`❌ [GCS] Failed to sign URL for ${bucketName}/${objectName}:`, error);
+    throw new Error(`Failed to generate signed URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

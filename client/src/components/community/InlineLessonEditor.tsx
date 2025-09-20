@@ -209,6 +209,7 @@ export default function InlineLessonEditor({
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ contentType: file.type }),
       });
 
       if (!response.ok) {

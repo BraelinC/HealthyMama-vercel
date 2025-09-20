@@ -694,14 +694,21 @@ const Search = () => {
 
                       <TabsContent value="instructions" className="p-4 pt-3">
                         <ol className="space-y-3">
-                          {generatedRecipe.instructions.map((step, index) => (
-                            <li key={index} className="flex gap-2 text-sm">
-                              <span className="flex-shrink-0 w-5 h-5 bg-purple-600 rounded-full text-white flex items-center justify-center text-xs">
-                                {index + 1}
-                              </span>
-                              <span className="text-gray-700">{String(step).replace(/^Step\s*\d+[:\.)]\s*/i, '')}</span>
-                            </li>
-                          ))}
+                          {(() => {
+                            const steps = Array.isArray(generatedRecipe.instructions)
+                              ? generatedRecipe.instructions
+                              : typeof generatedRecipe.instructions === 'string'
+                                ? generatedRecipe.instructions.split(/\n+|(?=Step\s*\d+[:\.)])/i).filter(Boolean)
+                                : [];
+                            return steps.map((step, index) => (
+                              <li key={index} className="flex gap-2 text-sm">
+                                <span className="flex-shrink-0 w-5 h-5 bg-purple-600 rounded-full text-white flex items-center justify-center text-xs">
+                                  {index + 1}
+                                </span>
+                                <span className="text-gray-700">{String(step).replace(/^Step\s*\d+[:\.)]\s*/i, '')}</span>
+                              </li>
+                            ));
+                          })()}
                         </ol>
                       </TabsContent>
 

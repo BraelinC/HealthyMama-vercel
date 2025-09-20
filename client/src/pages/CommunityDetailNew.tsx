@@ -10,11 +10,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -568,7 +569,17 @@ export default function CommunityDetailNew() {
     setLocation(`/community/${id}/post/${postId}`);
   };
 
+  // Persist last visited community for quick return from Communities
+  useEffect(() => {
+    try {
+      const uid = (user as any)?.id || (user as any)?.user?.id;
+      if (uid && id) {
+        localStorage.setItem(`lastCommunityId:${uid}`, String(id));
+      }
+    } catch {}
+  }, [id, user]);
 
+  
   // Fetch community details
   const { data: community, isLoading } = useQuery({
     queryKey: ["/api/communities", id],
@@ -579,6 +590,16 @@ export default function CommunityDetailNew() {
       });
     },
     enabled: !!id && isAuthenticated,
+  });
+
+  // Fetch user's communities for the header switcher
+  const { data: myCommunities = [] } = useQuery({
+    queryKey: ['/api/communities/my-communities'],
+    queryFn: async () => {
+      const { apiRequest } = await import("@/lib/queryClient");
+      return await apiRequest('/api/communities/my-communities', { method: 'GET' });
+    },
+    enabled: !!isAuthenticated,
   });
 
   // Fetch user's recipes
@@ -1275,7 +1296,7 @@ export default function CommunityDetailNew() {
       <header className="sticky top-0 z-50 bg-gray-800 border-b border-gray-700 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/communities">
+            <Link href="/">
               <Button variant="ghost" size="sm" className="text-white p-2">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -1286,7 +1307,61 @@ export default function CommunityDetailNew() {
                   {community.name[0]}
                 </AvatarFallback>
               </Avatar>
-              <h1 className="font-semibold text-lg">{community.name}</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-white px-2 py-1 flex items-center gap-1">
+                    <span className="font-semibold text-lg truncate max-w-[50vw]">{community.name}</span>
+                    <ChevronDown className="w-4 h-4 opacity-80" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white w-64 max-h-80 overflow-auto z-[2147483647]" align="start">
+                  <div className="px-3 py-2 text-xs uppercase tracking-wide text-gray-400">Your Communities</div>
+                  {Array.isArray(myCommunities) && myCommunities.length > 0 ? (
+                    myCommunities.map((c: any) => (
+                      <DropdownMenuItem
+                        key={c.id}
+                        className="hover:bg-gray-700 focus:bg-gray-700 cursor-pointer"
+                        onClick={() => setLocation(`/community/${c.id}`)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-xs font-semibold">
+                            {String(c.name || '').charAt(0)}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{c.name}</span>
+                            {c.member_count != null && (
+                              <span className="text-[10px] text-gray-400">{c.member_count} members</span>
+                            )}
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-400">No communities yet</div>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => {
+                      console.log('🟣 [Header Dropdown] Discover Communities clicked');
+                      setLocation('/communities?list=1');
+                    }}
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Discover Communities
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => {
+                      console.log('🟣 [Header Dropdown] Create Community clicked');
+                      setLocation('/communities?create=1&list=1');
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Community
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1986,11 +2061,9 @@ export default function CommunityDetailNew() {
       </Tabs>
 
       {/* Create Recipe Modal for Creators */}
-      {console.log("🍽️ CreateRecipe render - isOpen:", showMealPlanEditorMain && isCreator, "showMealPlanEditorMain:", showMealPlanEditorMain, "isCreator:", isCreator)}
-      <CreateRecipe 
+      <CreateRecipe
         isOpen={showMealPlanEditorMain && isCreator}
         onClose={() => {
-          console.log("🍽️ CreateRecipe onClose called");
           setShowMealPlanEditorMain(false);
           // Refresh the recipes list for carousel
           queryClient.invalidateQueries({ queryKey: [`/api/recipes/saved`] });
@@ -2057,11 +2130,7 @@ export default function CommunityDetailNew() {
                 <>
                   <DropdownMenuItem
                     onClick={() => {
-                      console.log("🍽️ Add Meal clicked - meals tab");
-                      console.log("🍽️ Current showMealPlanEditorMain state:", showMealPlanEditorMain);
-                      console.log("🍽️ Current isCreator state:", isCreator);
                       setShowMealPlanEditorMain(true);
-                      console.log("🍽️ Called setShowMealPlanEditorMain(true)");
                     }}
                     className="flex items-center gap-3 p-3 cursor-pointer hover:bg-emerald-50"
                   >
@@ -2089,11 +2158,7 @@ export default function CommunityDetailNew() {
                 <>
                   <DropdownMenuItem
                     onClick={() => {
-                      console.log("🍽️ Add Meal clicked - other tab");
-                      console.log("🍽️ Current showMealPlanEditorMain state:", showMealPlanEditorMain);
-                      console.log("🍽️ Current isCreator state:", isCreator);
                       setShowMealPlanEditorMain(true);
-                      console.log("🍽️ Called setShowMealPlanEditorMain(true)");
                     }}
                     className="flex items-center gap-3 p-3 cursor-pointer hover:bg-emerald-50"
                   >
