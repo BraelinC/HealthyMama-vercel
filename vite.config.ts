@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           // Match the Express+Vite integrated dev server
-          target: 'http://localhost:5002',
+          target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
         }

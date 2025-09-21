@@ -4874,6 +4874,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate download URL for uploaded objects
+  app.post('/api/objects/download-url', authenticateToken, async (req: any, res) => {
+    try {
+      console.log('📥 [API] Download URL request from user:', req.user?.id);
+      console.log('📥 [API] Request body:', JSON.stringify(req.body, null, 2));
+
+      const { fileName } = req.body;
+
+      if (!fileName) {
+        return res.status(400).json({
+          error: 'Missing fileName',
+          hint: 'Send { fileName: "file.jpg" }'
+        });
+      }
+
+      // Check GCS configuration
+      const hasGCSConfig = !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.GCS_PROJECT_ID);
+      if (!hasGCSConfig) {
+        console.error('❌ [API] GCS not configured for download');
+        return res.status(500).json({
+          error: 'Download service not configured',
+          details: 'Google Cloud Storage credentials missing'
+        });
+      }
+
+      const { objectStorageClient } = await import('./objectStorage');
+      const bucketName = 'healthymamabucket';
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(`uploads/${fileName}`);
+
+      // Check if file exists
+      const [exists] = await file.exists();
+      if (!exists) {
+        console.log('❌ [API] File not found in GCS:', fileName);
+        return res.status(404).json({
+          error: 'File not found',
+          details: `File ${fileName} does not exist in storage`
+        });
+      }
+
+      // Generate v4 signed URL for reading (24 hour expiry for preview)
+      const options = {
+        version: 'v4' as const,
+        action: 'read' as const,
+        expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      };
+
+      const [downloadUrl] = await file.getSignedUrl(options);
+
+      console.log('✅ [API] Download URL generated successfully for:', fileName);
+      res.json({ downloadUrl });
+    } catch (error: any) {
+      console.error('❌ [API] Error getting download URL:', error);
+
+      const errorResponse = {
+        error: 'Failed to get download URL',
+        details: error?.message || String(error),
+        timestamp: new Date().toISOString()
+      };
+
+      if (app.get('env') === 'development') {
+        errorResponse.hint = 'Check if file exists in GCS bucket and credentials are valid.';
+        errorResponse.stack = error?.stack;
+      }
+
+      res.status(500).json(errorResponse);
+    }
+  });
+
   // Test endpoint to verify GCS permissions (no auth for debugging)
   app.get('/api/objects/test-permissions', async (req: any, res) => {
     try {

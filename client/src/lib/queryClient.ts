@@ -59,7 +59,9 @@ export async function apiRequest(
     if (!contentType || !contentType.includes('application/json')) {
       const text = await res.text();
       console.error('Non-JSON Response:', text);
-      throw new Error(`Server returned ${contentType || 'unknown content type'} instead of JSON. Check endpoint: ${fullUrl}`);
+      const err: any = new Error(`Server returned ${contentType || 'unknown content type'} instead of JSON. Check endpoint: ${fullUrl}`);
+      (err as any).status = res.status;
+      throw err;
     }
 
     const text = await res.text();
@@ -81,8 +83,26 @@ export async function apiRequest(
     }
 
     if (!res.ok) {
-      const errorMessage = parsed?.message || parsed?.error || `HTTP error! status: ${res.status}`;
-      throw new Error(errorMessage);
+      const status = res.status;
+      const errorMessage = parsed?.message || parsed?.error || `HTTP error! status: ${status}`;
+
+      // Proactively clear invalid/expired tokens so app can recover gracefully
+      const lower = String(errorMessage).toLowerCase();
+      if (
+        status === 401 ||
+        status === 403 ||
+        lower.includes('invalid token') ||
+        lower.includes('access token required') ||
+        lower.includes('authentication required')
+      ) {
+        try { localStorage.removeItem('auth_token'); } catch {}
+        // Emit a lightweight event for listeners if needed
+        try { window.dispatchEvent(new CustomEvent('auth-token-invalid')); } catch {}
+      }
+
+      const err: any = new Error(`${errorMessage} (${status})`);
+      err.status = status;
+      throw err;
     }
 
     // console.log('API Parsed Response:', parsed);
@@ -138,7 +158,16 @@ export const queryClient = new QueryClient({
           const result = await apiRequest(url, { method: 'GET' });
           // console.log('Query result:', result);
           return result;
-        } catch (error) {
+        } catch (error: any) {
+          const msg = String(error?.message || '').toLowerCase();
+          const status = (error && (error as any).status) || 0;
+          // For auth status probe, treat unauthorized as unauthenticated (null) instead of error
+          if (
+            (url === '/api/auth/user' || url.endsWith('/api/auth/user')) &&
+            (status === 401 || status === 403 || msg.includes('invalid token') || msg.includes('access token required') || msg.includes('authentication required'))
+          ) {
+            return null;
+          }
           console.error('Query error for', url, ':', error);
           throw error;
         }
@@ -152,7 +181,12 @@ export const queryClient = new QueryClient({
       retry: (failureCount, error: any) => {
         // console.log('Query retry attempt:', failureCount, 'for error:', error);
         // Don't retry on authentication or client errors
-        if (error.message?.includes('401') || error.message?.includes('400')) {
+        const msg = String(error?.message || '').toLowerCase();
+        const status = (error && (error as any).status) || 0;
+        if (
+          msg.includes('401') || msg.includes('403') || msg.includes('invalid token') || msg.includes('access token required') ||
+          status === 401 || status === 403 || msg.includes('400')
+        ) {
           return false;
         }
         return failureCount < 2;

@@ -1,3 +1,7 @@
+// DEPRECATED: This is a minimal API server for basic development testing
+// For full development, use: npm run dev (which runs server/index.ts with Vite integration)
+// This file is kept for testing auth endpoints in isolation if needed
+
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';

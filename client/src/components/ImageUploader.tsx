@@ -65,10 +65,31 @@ export function ImageUploader({ onImagesChange, maxImages = 4, className = "" }:
         throw new Error('Failed to upload image');
       }
 
-      // Return the server path for accessing the uploaded file
-      const serverPath = `/objects/uploads/${file.name}`;
-      console.log('✅ Upload successful. Server path:', serverPath);
-      return serverPath;
+      console.log('✅ Upload to GCS successful. Requesting download URL...');
+
+      // 3. Get download URL for preview
+      const downloadResponse = await fetch('/api/objects/download-url', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: file.name
+        }),
+      });
+
+      if (!downloadResponse.ok) {
+        console.error('Download URL request failed:', downloadResponse.status);
+        // Fall back to localhost path if download URL fails
+        const serverPath = `/objects/uploads/${file.name}`;
+        console.log('⚠️ Using fallback server path:', serverPath);
+        return serverPath;
+      }
+
+      const { downloadUrl } = await downloadResponse.json();
+      console.log('✅ Got GCS download URL:', downloadUrl);
+      return downloadUrl;
     } catch (error) {
       console.error('Upload error:', error);
       throw error;

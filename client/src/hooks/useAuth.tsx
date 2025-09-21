@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "../lib/queryClient";
 import type { User } from "@shared/schema";
 
 interface AuthContextType {
@@ -14,25 +15,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  // Fetch user data with session-based authentication
+  // Fetch user data using centralized apiRequest (handles token + cookies)
   const { data: userData, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
-      const response = await fetch("/api/auth/user", {
-        credentials: 'include', // Include cookies for session-based auth
-      });
-      
-      if (!response.ok) {
-        // If not authenticated, return null (don't throw error)
-        if (response.status === 401) {
+      try {
+        const data = await apiRequest("/api/auth/user", { method: 'GET' });
+        // Handle both formats: { user: User } and direct User object
+        return (data.user || data) as User;
+      } catch (err: any) {
+        // If unauthorized or invalid token, clear stale token and return null
+        const msg = String(err?.message || '').toLowerCase();
+        if (
+          msg.includes('401') ||
+          msg.includes('access token required') ||
+          msg.includes('authentication required') ||
+          msg.includes('invalid token')
+        ) {
+          try { localStorage.removeItem('auth_token'); } catch {}
           return null;
         }
-        throw new Error("Failed to fetch user");
+        throw err;
       }
-      
-      const data = await response.json();
-      // Handle both formats: { user: User } and direct User object
-      return (data.user || data) as User;
     },
     retry: false,
     refetchOnWindowFocus: true, // Refetch when window regains focus (helps after redirect)

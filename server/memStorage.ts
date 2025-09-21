@@ -21,39 +21,35 @@ export class MemStorage implements IStorage {
   }
 
   private async generateDefaultRecipes() {
-    // Generate the 4 default recipes using the same system that worked for chocolate cake
-    const defaultQueries = [
-      "One-Pan Chicken & Veggies recipe",
-      "Ground Beef Tacos recipe", 
-      "High-Protein Greek Salad recipe",
-      "Creamy Pasta with Hidden Veggies recipe"
+    // Skip default recipe generation in development to avoid auth issues
+    // These can be generated once a user logs in and starts using the app
+    console.log('🍳 [MEM STORAGE] Skipping default recipe generation - will generate when needed');
+
+    // Create some basic recipes directly in memory for testing
+    const basicRecipes = [
+      {
+        title: "Simple Pasta",
+        description: "Quick and easy pasta dish",
+        ingredients: ["pasta", "olive oil", "garlic", "parmesan"],
+        instructions: ["Boil pasta", "Heat oil", "Add garlic", "Mix with cheese"],
+        time_minutes: 20,
+        cuisine: "italian",
+        diet: "vegetarian"
+      },
+      {
+        title: "Chicken Salad",
+        description: "Healthy chicken salad",
+        ingredients: ["chicken breast", "lettuce", "tomatoes", "cucumber"],
+        instructions: ["Cook chicken", "Chop vegetables", "Mix together", "Serve fresh"],
+        time_minutes: 15,
+        cuisine: "american",
+        diet: "healthy"
+      }
     ];
 
-    // Use fetch to call the same route that worked for chocolate cake
-    for (const query of defaultQueries) {
-      try {
-        console.log(`Generating default recipe: ${query}`);
-        
-        const response = await fetch('http://localhost:5000/api/recipes/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            description: query,
-            generationMode: 'detailed'
-          })
-        });
-
-        if (response.ok) {
-          const recipe = await response.json();
-          console.log(`Successfully generated default recipe: ${recipe.title}`);
-        } else {
-          console.log(`Failed to generate default recipe for: ${query}`);
-        }
-      } catch (error) {
-        console.log(`Error generating default recipe for: ${query}`);
-      }
+    for (const recipeData of basicRecipes) {
+      await this.createRecipe(recipeData);
+      console.log(`✅ [MEM STORAGE] Created basic recipe: ${recipeData.title}`);
     }
   }
 

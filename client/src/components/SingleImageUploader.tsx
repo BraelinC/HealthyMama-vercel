@@ -43,14 +43,40 @@ export function SingleImageUploader({ onImageUploaded, className = "" }: SingleI
         throw new Error('Failed to upload image');
       }
 
-      // Return the object path that can be accessed via our server
+      console.log('✅ Upload to GCS successful. Requesting download URL...');
+
+      // Get the file name from the signed URL
       const url = new URL(uploadURL);
       const objectPath = url.pathname;
-      const objectId = objectPath.split('/').pop()?.split('?')[0];
-      
-      const serverPath = `/objects/uploads/${objectId}`;
-      console.log('Upload successful. Server path:', serverPath);
-      return serverPath;
+      const fileName = objectPath.split('/').pop()?.split('?')[0];
+
+      if (!fileName) {
+        throw new Error('Could not extract filename from upload URL');
+      }
+
+      // Get download URL for preview
+      const downloadResponse = await fetch('/api/objects/download-url', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: fileName
+        }),
+      });
+
+      if (!downloadResponse.ok) {
+        console.error('Download URL request failed:', downloadResponse.status);
+        // Fall back to localhost path if download URL fails
+        const serverPath = `/objects/uploads/${fileName}`;
+        console.log('⚠️ Using fallback server path:', serverPath);
+        return serverPath;
+      }
+
+      const { downloadUrl } = await downloadResponse.json();
+      console.log('✅ Got GCS download URL:', downloadUrl);
+      return downloadUrl;
 
     } catch (error) {
       console.error('Upload error:', error);

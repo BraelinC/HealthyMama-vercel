@@ -13,7 +13,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   email: z.string().email(),
-  phone: z.string().min(10),
+  phone: z.string().min(10).optional(),
   password: z.string().min(8),
   full_name: z.string().min(1)
 });
@@ -55,30 +55,46 @@ export function generateToken(userId: string, isCreator: boolean = false): strin
 
 // Verify JWT token with support for old secrets
 export function verifyToken(token: string): { userId: string; needsRefresh?: boolean } | null {
+  console.log(`🔍 [AUTH DEBUG] Attempting to verify token with current secret (length: ${JWT_SECRET.length})`);
+
   // First try with current secret
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    console.log(`✅ [AUTH DEBUG] Token verified with current secret for:`, decoded.userId);
+    console.log(`✅ [AUTH DEBUG] Token verified with current secret for user:`, decoded.userId);
     return decoded;
   } catch (error: any) {
-    console.log(`⚠️ [AUTH DEBUG] Token verification failed with current secret:`, error.name, error.message);
-    // If it's not a signature error, token is invalid
-    if (error.name !== 'JsonWebTokenError' || error.message !== 'invalid signature') {
-      console.log(`❌ [AUTH DEBUG] Non-signature error, token is invalid`);
+    console.log(`⚠️ [AUTH DEBUG] Current secret failed:`, {
+      errorName: error.name,
+      errorMessage: error.message,
+      tokenPreview: token.substring(0, 50) + '...'
+    });
+
+    // Handle expired tokens
+    if (error.name === 'TokenExpiredError') {
+      console.log(`❌ [AUTH DEBUG] Token expired at:`, error.expiredAt);
       return null;
     }
-    
-    // Try with old secrets
-    for (const oldSecret of OLD_JWT_SECRETS) {
+
+    // Handle malformed tokens
+    if (error.name === 'JsonWebTokenError' && error.message !== 'invalid signature') {
+      console.log(`❌ [AUTH DEBUG] Malformed token:`, error.message);
+      return null;
+    }
+
+    // Try with old secrets for signature errors
+    console.log(`🔄 [AUTH DEBUG] Trying ${OLD_JWT_SECRETS.length} old secrets...`);
+    for (let i = 0; i < OLD_JWT_SECRETS.length; i++) {
+      const oldSecret = OLD_JWT_SECRETS[i];
       try {
         const decoded = jwt.verify(token, oldSecret) as { userId: string };
-        // Token is valid but needs refresh with new secret
+        console.log(`✅ [AUTH DEBUG] Token verified with old secret ${i} for user:`, decoded.userId);
         return { ...decoded, needsRefresh: true };
-      } catch {
-        // Continue to next secret
+      } catch (oldError: any) {
+        console.log(`⚠️ [AUTH DEBUG] Old secret ${i} failed:`, oldError.message);
       }
     }
-    
+
+    console.log(`❌ [AUTH DEBUG] All token verification attempts failed`);
     return null;
   }
 }
@@ -203,7 +219,7 @@ export async function registerUser(req: Request, res: Response) {
     // Create user with free trial
     const user = await storage.createUser({
       email: validatedData.email,
-      phone: validatedData.phone,
+      phone: validatedData.phone || '',
       password_hash: hashedPassword,
       full_name: validatedData.full_name,
       account_type: 'free_trial',
@@ -238,33 +254,49 @@ export async function registerUser(req: Request, res: Response) {
 // Login user with session support
 export async function loginUser(req: Request, res: Response) {
   try {
+    console.log(`🔍 [LOGIN DEBUG] Login attempt for email:`, req.body.email);
     const validatedData = loginSchema.parse(req.body);
 
     // Find user by email
+    console.log(`🔍 [LOGIN DEBUG] Looking up user by email:`, validatedData.email);
     const user = await storage.getUserByEmail(validatedData.email);
     if (!user) {
+      console.log(`❌ [LOGIN DEBUG] User not found for email:`, validatedData.email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    console.log(`✅ [LOGIN DEBUG] User found:`, { id: user.id, email: user.email, hasPassword: !!user.password_hash });
+
     // Verify password
-    if (!user.password_hash || !await verifyPassword(validatedData.password, user.password_hash)) {
+    if (!user.password_hash) {
+      console.log(`❌ [LOGIN DEBUG] User has no password hash`);
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const passwordValid = await verifyPassword(validatedData.password, user.password_hash);
+    console.log(`🔍 [LOGIN DEBUG] Password verification result:`, passwordValid);
+
+    if (!passwordValid) {
+      console.log(`❌ [LOGIN DEBUG] Password verification failed`);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Generate token with creator status
     const token = generateToken(user.id.toString(), user.is_creator || false);
+    console.log(`✅ [LOGIN DEBUG] Generated token for user:`, user.id);
 
-    // Also store user ID in session as fallback  
+    // Also store user ID in session as fallback
     if (req.session) {
       (req.session as any).userId = user.id;
       req.session.save((err) => {
-        if (err) console.error('Session save error:', err);
-        else console.log(`✅ Session created for user ${user.id}`);
+        if (err) console.error('❌ [LOGIN DEBUG] Session save error:', err);
+        else console.log(`✅ [LOGIN DEBUG] Session created for user ${user.id}`);
       });
     }
 
     // Return user data (without password) and token (including is_creator)
     const { password_hash, ...userWithoutPassword } = user;
+    console.log(`✅ [LOGIN DEBUG] Login successful for user:`, user.id);
     res.json({
       user: userWithoutPassword,
       token,
