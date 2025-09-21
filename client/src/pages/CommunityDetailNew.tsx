@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Chat from "./Chat";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,9 @@ import EnhancedLessonEditor from "@/components/community/EnhancedLessonEditor";
 import InlineLessonEditor from "@/components/community/InlineLessonEditor";
 import RecipeDisplay from "@/components/RecipeDisplay";
 import CourseManagement from "@/components/CourseManagement";
+import AdvancedCommentOverlay from "@/components/AdvancedCommentOverlay";
+import ImageLightbox from "@/components/ImageLightbox";
+import { useRef } from "react";
 
 interface Community {
   id: number;
@@ -272,14 +276,19 @@ function MealPlansClassroom({
         </div>
       );
     }
+    // Desktop: show the lesson editor as an overlay above the page
     return (
-      <InlineLessonEditor
-        lesson={selectedLesson}
-        communityId={communityId || ''}
-        courseId={selectedCourse?.id || 0}
-        isCreator={isCreator}
-        onClose={() => setShowLessonView(false)}
-      />
+      <div className="fixed inset-0 z-[100010] bg-black/70 backdrop-blur-sm overflow-auto p-2 sm:p-4">
+        <div className="max-w-5xl mx-auto">
+          <InlineLessonEditor
+            lesson={selectedLesson}
+            communityId={communityId || ''}
+            courseId={selectedCourse?.id || 0}
+            isCreator={isCreator}
+            onClose={() => setShowLessonView(false)}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -343,16 +352,16 @@ function MealPlansClassroom({
           )}
         </div>
       ) : (
-        // Course Cards Grid - Full Width Desktop Layout  
-        <div className="w-full space-y-4">
+        // Course Cards Grid - 3 Column Layout
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {courses.map((course: any) => (
-            <Card 
+            <Card
               key={course.id}
-              className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-all duration-200 cursor-pointer group overflow-hidden w-full max-w-none lg:flex lg:flex-row"
+              className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-all duration-200 cursor-pointer group overflow-hidden flex flex-col"
               onClick={() => toggleCourseExpansion(course.id)}
             >
-              {/* Course Cover Image - Horizontal Layout for Desktop */}
-              <div className="relative h-24 lg:h-20 bg-gradient-to-br from-purple-600 via-blue-600 to-emerald-600 overflow-hidden lg:w-32 lg:flex-shrink-0">
+              {/* Course Cover Image - Square Layout for Grid */}
+              <div className="relative h-40 bg-gradient-to-br from-purple-600 via-blue-600 to-emerald-600 overflow-hidden">
                 {course.cover_image ? (
                   <img 
                     src={course.cover_image} 
@@ -390,7 +399,7 @@ function MealPlansClassroom({
               </div>
 
               {/* Course Content */}
-              <CardContent className="p-4 lg:p-4 lg:flex-1">
+              <CardContent className="p-4 flex-1">
                 <div className="space-y-3">
                   {/* Title and Stats */}
                   <div>
@@ -540,8 +549,68 @@ export default function CommunityDetailNew() {
   const [newPostContent, setNewPostContent] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [postOverlayOpen, setPostOverlayOpen] = useState(false);
+  const [postLightboxOpen, setPostLightboxOpen] = useState(false);
+  const [postLightboxSrc, setPostLightboxSrc] = useState<string | null>(null);
   const [showMealPlanEditorMain, setShowMealPlanEditorMain] = useState(false);
   const [showCourseManagement, setShowCourseManagement] = useState(false);
+  const sidebarFileRef = useRef<HTMLInputElement>(null);
+  const uploadSidebarImage = async (file: File): Promise<string> => {
+    const response = await fetch('/api/objects/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+    });
+    if (!response.ok) throw new Error('Failed to get upload URL');
+    const { url } = await response.json();
+    const uploadResponse = await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+    if (!uploadResponse.ok) throw new Error('Failed to upload image');
+    const downloadResponse = await fetch('/api/objects/download-url', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileName: file.name }),
+    });
+    if (!downloadResponse.ok) return `/objects/uploads/${file.name}`;
+    const { downloadUrl } = await downloadResponse.json();
+    return downloadUrl;
+  };
+
+  const ChangeCommunityImageButton = ({ communityId, hasImage, onChanged }: { communityId: string; hasImage: boolean; onChanged: () => void }) => {
+    const handlePick = () => sidebarFileRef.current?.click();
+    const onFiles = async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      if (!file.type.startsWith('image/')) return;
+      try {
+        const url = await uploadSidebarImage(file);
+        await fetch(`/api/communities/${communityId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ cover_image: url }),
+        });
+        onChanged();
+      } catch (e) {
+        console.error('Failed to update cover image', e);
+      }
+    };
+    return (
+      <>
+        <Button variant="outline" size="sm" className="w-full border-gray-600 text-gray-200" onClick={handlePick}>
+          {hasImage ? 'Change Image' : 'Add Image'}
+        </Button>
+        <input ref={sidebarFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFiles(e.target.files)} />
+      </>
+    );
+  };
   
   // Tab state
   const [activeTab, setActiveTab] = useState("community");
@@ -1303,7 +1372,7 @@ export default function CommunityDetailNew() {
             </Link>
             <div className="flex items-center gap-2">
               <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-purple-600 text-white text-sm">
+                <AvatarFallback className="text-sm bg-gradient-to-br from-purple-500 to-emerald-500 text-white font-semibold">
                   {community.name[0]}
                 </AvatarFallback>
               </Avatar>
@@ -1387,7 +1456,7 @@ export default function CommunityDetailNew() {
             Meal Plans
           </TabsTrigger>
           <TabsTrigger value="members" className="flex-1 bg-gray-800 text-gray-300 data-[state=active]:bg-gray-700 data-[state=active]:text-white hover:bg-gray-700 hover:text-white">
-            Members
+            AI Chat
           </TabsTrigger>
           <TabsTrigger value="extractor" className="flex-1 bg-gray-800 text-gray-300 data-[state=active]:bg-gray-700 data-[state=active]:text-white hover:bg-gray-700 hover:text-white">
             Extractor
@@ -1395,7 +1464,9 @@ export default function CommunityDetailNew() {
         </TabsList>
 
         {/* Community Tab Content */}
-        <TabsContent value="community" className="p-4 space-y-4 bg-gray-900 min-h-screen">
+        <TabsContent value="community" className="p-4 bg-gray-900 min-h-screen">
+          <div className="relative max-w-7xl mx-auto md:block">
+            <div className="max-w-2xl md:max-w-none md:pr-[360px] mx-auto space-y-4">
           {/* Community Stats Banner - Only show for non-members */}
           {!isMember && (
             <Card className="bg-gradient-to-r from-purple-600 to-blue-600 border-none">
@@ -1416,53 +1487,31 @@ export default function CommunityDetailNew() {
             </Card>
           )}
 
-          {/* Post Creation - Only show for members */}
+          {/* Post Creation - Only show for members (simplified) */}
           {isMember && (
             <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex gap-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-purple-600 text-white">
-                      {(user as any)?.firstName?.[0] || 'U'}
+              <CardContent className="px-3 py-4">
+                <div className="flex gap-3 items-start">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-sm bg-gradient-to-br from-purple-500 to-emerald-500 text-white font-semibold">
+                      {(() => {
+                        const u: any = user;
+                        const name = u?.full_name || u?.user?.full_name || u?.email || 'U';
+                        const parts = String(name).trim().split(' ').filter(Boolean);
+                        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+                        return (parts[0]?.[0] || name[0] || 'U').toUpperCase();
+                      })()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 space-y-3">
+                  <div className="flex-1">
                     <Textarea
-                      placeholder="Share something with the community..."
+                      placeholder="Write something..."
                       value={newPostContent}
+                      onFocus={() => setPostOverlayOpen(true)}
                       onChange={(e) => setNewPostContent(e.target.value)}
                       className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 resize-none"
-                      rows={3}
+                      rows={2}
                     />
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-2 items-center">
-                        <ImageUploader 
-                          onImagesChange={setSelectedImages}
-                          maxImages={4}
-                        />
-                        {/* Creator-only New Course button */}
-                        {isCreator && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-emerald-400 hover:text-emerald-300 p-2"
-                            onClick={() => setShowMealPlanEditorMain(true)}
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span className="ml-1 text-xs">Course</span>
-                          </Button>
-                        )}
-                      </div>
-                      <Button 
-                        onClick={() => createPostMutation.mutate({ content: newPostContent, images: selectedImages })}
-                        disabled={!newPostContent.trim() || createPostMutation.isPending}
-                        size="sm"
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <Send className="w-4 h-4 mr-1" />
-                        {createPostMutation.isPending ? "Posting..." : "Post"}
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -1488,8 +1537,8 @@ export default function CommunityDetailNew() {
             ))}
           </div>
 
-          {/* Posts Feed */}
-          <div className="space-y-4">
+            {/* Posts Feed */}
+            <div className="space-y-4">
             {posts.length === 0 && !postsLoading && (
               <Card className="bg-gray-800 border-gray-700">
                 <CardContent className="p-6 text-center">
@@ -1505,12 +1554,12 @@ export default function CommunityDetailNew() {
                 className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
                 onClick={() => navigateToPost(post.id)}
               >
-                <CardContent className="p-4">
+                <CardContent className="px-3 py-4">
                   {/* Post Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-blue-600 text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-purple-500 to-emerald-500 text-white font-semibold">
                           {(post.author?.full_name || post.username || 'U')[0]}
                         </AvatarFallback>
                       </Avatar>
@@ -1597,13 +1646,48 @@ export default function CommunityDetailNew() {
 
                   {/* Post Content */}
                   <div className="mb-4">
+                    {/* New layout: Title + body with thumbnail on the right */}
+                    {(() => {
+                      if (post.post_type === 'meal_share') return null;
+                      const raw = (post.content || '').toString();
+                      const parts = raw.split('\n');
+                      const title = parts.shift() || '';
+                      const body = parts.join('\n');
+                      const thumb = post.images && post.images.length > 0 ? post.images[0] : null;
+                      return (
+                        <div className="flex items-start gap-4">
+                          <div className="flex-1">
+                            {title && (
+                              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">{title}</h3>
+                            )}
+                            {body && (
+                              <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{body}</p>
+                            )}
+                          </div>
+                          {thumb && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setPostLightboxSrc(thumb); setPostLightboxOpen(true); }}
+                              className="block"
+                            >
+                              <img
+                                src={thumb}
+                                alt="Post thumbnail"
+                                className="w-28 h-24 sm:w-32 sm:h-24 object-cover rounded-lg bg-gray-700 shrink-0 cursor-zoom-in"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {/* Only show content for non-meal_share posts */}
-                    {post.post_type !== 'meal_share' && (
+                    {post.post_type !== 'meal_share' && false && (
                       <p className="text-gray-200 mb-3">{post.content}</p>
                     )}
                     
                     {/* Post Images */}
-                    {post.images && post.images.length > 0 && (
+                    {post.post_type === 'meal_share' && post.images && post.images.length > 0 && (
                       <div className={`grid gap-2 mb-3 ${
                         post.images.length === 1 ? 'grid-cols-1' :
                         post.images.length === 2 ? 'grid-cols-2' :
@@ -1611,15 +1695,30 @@ export default function CommunityDetailNew() {
                       }`}>
                         {post.images.slice(0, 4).map((imageUrl: string, index: number) => (
                           <div key={index} className="relative group">
-                            <img
-                              src={imageUrl}
-                              alt={`Post image ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg bg-gray-700"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
+                            <button
+                              type="button"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                // Debug: Image click to open lightbox
+                                try { 
+                                  // eslint-disable-next-line no-console
+                                  console.log('🖼️ [Post Image Click] Opening lightbox for:', imageUrl);
+                                } catch {}
+                                setPostLightboxSrc(imageUrl); 
+                                setPostLightboxOpen(true); 
                               }}
-                            />
+                              className="block w-full"
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Post image ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg bg-gray-700 cursor-zoom-in"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            </button>
                             {post.images!.length > 4 && index === 3 && (
                               <div className="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
                                 <span className="text-white font-medium">+{post.images!.length - 4}</span>
@@ -1808,7 +1907,81 @@ export default function CommunityDetailNew() {
                 </CardContent>
               </Card>
             ))}
+            </div>
+
+            {/* Right Sidebar: Community Profile */}
+            <aside className="hidden md:block w-[320px] absolute right-0 top-0">
+              <div className="space-y-4">
+                <Card className="bg-gray-800 border-gray-700 overflow-hidden">
+                  {community.cover_image ? (
+                    <img 
+                      src={community.cover_image} 
+                      alt={`${community.name} cover`} 
+                      className="w-full h-32 object-cover"
+                    />
+                  ) : (
+                    <div className="h-32 w-full bg-gradient-to-br from-purple-600 via-blue-600 to-emerald-600 flex items-center justify-center">
+                      <span className="text-white/80 text-sm">No image</span>
+                    </div>
+                  )}
+                  <CardContent className="p-4 space-y-3">
+                    <div>
+                      <h3 className="text-white font-semibold text-base">{community.name}</h3>
+                      {community.category && (
+                        <p className="text-xs text-gray-400 mt-0.5 capitalize">{community.category}</p>
+                      )}
+                    </div>
+                    {community.description && (
+                      <p className="text-sm text-gray-300 line-clamp-4">{community.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-sm text-gray-300">
+                      <span className="flex items-center gap-2">
+                        <Users className="w-4 h-4" /> {community.member_count} members
+                      </span>
+                      {community.is_public ? (
+                        <Badge className="bg-emerald-600 text-white">Public</Badge>
+                      ) : (
+                        <Badge className="bg-gray-600 text-white">Private</Badge>
+                      )}
+                    </div>
+                    {isCreator && (
+                      <div className="pt-1">
+                        <ChangeCommunityImageButton 
+                          communityId={id || ''} 
+                          hasImage={!!community.cover_image} 
+                          onChanged={() => queryClient.invalidateQueries({ queryKey: ["/api/communities", id] })}
+                        />
+                      </div>
+                    )}
+                    {!isMember ? (
+                      <Button 
+                        className="w-full bg-white text-purple-600 hover:bg-gray-100"
+                        onClick={() => joinCommunityMutation.mutate()}
+                        disabled={joinCommunityMutation.isPending}
+                      >
+                        {joinCommunityMutation.isPending ? 'Joining...' : 'Join Community'}
+                      </Button>
+                    ) : (
+                      isCreator ? (
+                        <Button 
+                          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                          onClick={() => setShowCourseManagement(true)}
+                        >
+                          Manage Community
+                        </Button>
+                      ) : (
+                        <Button className="w-full bg-gray-700 text-white" variant="secondary" disabled>
+                          Member
+                        </Button>
+                      )
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </aside>
+            
           </div>
+            </div>
         </TabsContent>
 
         {/* Meal Plans Tab - Classroom Style */}
@@ -1839,49 +2012,10 @@ export default function CommunityDetailNew() {
         </TabsContent>
 
 
-        {/* Members Tab */}
-        <TabsContent value="members" className="p-4 space-y-4 mt-12 pt-4 bg-gray-900">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Members ({community.member_count})</h3>
-              <Button variant="outline" size="sm" className="border-gray-600 text-gray-300">
-                <Plus className="w-4 h-4 mr-1" />
-                Invite
-              </Button>
-            </div>
-            
-            {/* Member List Preview */}
-            <div className="space-y-3">
-              {[
-                { name: "Sarah Chen", role: "Creator", level: 15 },
-                { name: "Mike Johnson", role: "Moderator", level: 12 },
-                { name: "Emily Rodriguez", role: "Member", level: 8 },
-              ].map((member, index) => (
-                <Card key={index} className="bg-gray-800 border-gray-700">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback className="bg-purple-600 text-white">
-                            {member.name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-medium text-white">{member.name}</h4>
-                          <p className="text-sm text-gray-400">{member.role}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-sm text-gray-400">
-                          <TrendingUp className="w-3 h-3" />
-                          Level {member.level}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+        {/* AI Chat Tab */}
+        <TabsContent value="members" className="p-0 mt-0 pt-0 bg-gray-900">
+          <div className="h-[calc(100vh-12rem)]">
+            <Chat />
           </div>
         </TabsContent>
 
@@ -2202,6 +2336,31 @@ export default function CommunityDetailNew() {
           </DropdownMenu>
         </div>
       )}
+
+      {/* Post Image Lightbox */}
+      <ImageLightbox
+        src={postLightboxSrc || ''}
+        alt={postLightboxSrc || undefined}
+        open={postLightboxOpen}
+        onClose={() => setPostLightboxOpen(false)}
+      />
+
+      {/* Advanced Post Composer Overlay */}
+      <AdvancedCommentOverlay
+        isOpen={postOverlayOpen}
+        title="Create Post"
+        initialTitle=""
+        initialContent={newPostContent}
+        initialImages={selectedImages}
+        onSubmit={({ title, content, images }) => {
+          const combined = title && title.trim().length > 0 ? `${title.trim()}\n${content}` : content;
+          setNewPostContent(combined);
+          setSelectedImages(images);
+          setPostOverlayOpen(false);
+          createPostMutation.mutate({ content: combined, images });
+        }}
+        onClose={() => setPostOverlayOpen(false)}
+      />
     </div>
   );
 }

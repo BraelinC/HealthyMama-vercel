@@ -121,7 +121,9 @@ export default function InlineLessonEditor({
         if (typeof step === 'string') return step;
         return step?.text || `Step ${step?.step || idx + 1}`;
       }),
-      nutrition_info: src?.nutrition_info || undefined,
+      nutrition_info: src?.servings
+        ? { ...(src?.nutrition_info || {}), servings: src.servings }
+        : (src?.nutrition_info || undefined),
     } as any;
   };
   // If not a creator, show simple student view
@@ -363,7 +365,8 @@ export default function InlineLessonEditor({
   return (
     <div className="bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-50">
+      {/* Make header sticky only on small screens. On desktop, let it scroll away to avoid a floating gap at the top. */}
+      <div className="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-50 md:static md:top-auto">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div className="flex items-center gap-4">
             <Button 

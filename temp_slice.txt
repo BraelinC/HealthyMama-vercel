@@ -1,0 +1,141 @@
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({ is_published: !selectedCourse.is_published })
+                          });
+                          if (!resp.ok) throw new Error('Failed to update publish status');
+                          await queryClient.invalidateQueries({ queryKey: [`/api/communities/${communityId}/courses`] });
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                    >
+                      {selectedCourse.is_published ? 'Unpost' : 'Post'}
+                    </Button>
+                    <div className="text-sm text-gray-400 mt-2">Status</div>
+                  </div>
+                </div>
+
+                {/* Course Content Structure */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold text-white">Course Content</h3>
+                    <Button 
+                      onClick={() => setShowModuleCreationForm(true)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Module
+                    </Button>
+                  </div>
+
+                  {/* Modules and Lessons */}
+                  <div className="space-y-3 -mx-3 md:mx-0">
+                    {/* Module Selection and Display */}
+                    {(() => {
+                      // Get current module from real API data
+                      const currentModule = modules.find((m: any) => m.id === selectedModuleId) || modules[0];
+
+                      // Show modules UI if modules exist
+                      if (modules.length > 0) {
+                        return (
+                          <div className="bg-gray-800 rounded-lg border border-gray-700">
+                            {/* Module Selection Dropdown */}
+                            <div className="p-4 border-b border-gray-700">
+                              <Select 
+                                value={selectedModuleId?.toString() || ""} 
+                                onValueChange={(value) => setSelectedModuleId(Number(value))}
+                              >
+                                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white h-12 px-4 rounded-lg text-left">
+                                  <SelectValue placeholder="Select a module" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700" style={{zIndex: 100005}}>
+                                  {modules.map((module: any) => (
+                                    <SelectItem 
+                                      key={module.id} 
+                                      value={module.id.toString()}
+                                      className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                                    >
+                                      {module.emoji} {module.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            {/* Lessons within selected module */}
+                            <div className="p-1 md:p-4 space-y-2">
+                              {showLessonCreationForm ? (
+                                // Inline Lesson Creation Form
+                                <div className="min-h-0 flex-1 -mx-2 md:mx-0">
+                                  <LessonEditor
+                                    communityId={communityId}
+                                    courseId={selectedCourseId!}
+                                    moduleId={selectedModuleId!}
+                                    lessonData={selectedLessonData}
+                                    isInline={true}
+                                    onClose={() => {
+                                      setShowLessonCreationForm(false);
+                                      setEditingLessonId(null);
+                                      setSelectedLessonData(null);
+                                    }}
+                                    onSave={() => {
+                                      setShowLessonCreationForm(false);
+                                      setEditingLessonId(null);
+                                      setSelectedLessonData(null);
+                                      // Cache invalidation is handled by LessonEditor
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <>
+                                  {currentModule?.lessons?.map((lesson: any) => (
+                                    <div key={lesson.id} className="flex items-center justify-between py-3 md:py-2 px-3 md:px-3 bg-gray-700 rounded">
+                                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <span className="text-base md:text-sm">{lesson.emoji}</span>
+                                        <span className="text-white truncate">{lesson.title}</span>
+                                      </div>
+                                      <div className="flex items-center gap-3 md:gap-2">
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="text-gray-400 hover:text-white h-8 w-8 md:h-6 md:w-6 p-0"
+                                          onClick={() => handleEditLesson(lesson)}
+                                          disabled={loadingLessonId === lesson.id}
+                                        >
+                                          {loadingLessonId === lesson.id ? (
+                                            <Loader2 className="h-4 w-4 md:h-3 md:w-3 animate-spin" />
+                                          ) : (
+                                            <Edit className="h-4 w-4 md:h-3 md:w-3" />
+                                          )}
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="text-gray-400 hover:text-white h-8 w-8 md:h-6 md:w-6 p-0"
+                                          onClick={() => handleDeleteLesson(lesson.id)}
+                                        >
+                                          <Trash2 className="h-4 w-4 md:h-3 md:w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )) || (
+                                    <div className="text-center py-6 text-gray-400">
+                                      No lessons in this module yet
+                                    </div>
+                                  )}
+
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 py-3 md:py-2"
+                                    onClick={() => setShowLessonCreationForm(true)}
+                                  >
+                                    <Plus className="h-4 w-4 md:h-3 md:w-3 mr-2" />
+                                    Add Lesson
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );

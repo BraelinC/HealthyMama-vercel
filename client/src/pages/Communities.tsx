@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, TrendingUp, Plus, Search, ChefHat, DollarSign, Globe, Heart, X, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,6 +94,57 @@ export default function Communities() {
     category: "",
     cover_image: ""
   });
+  const [uploadingProfile, setUploadingProfile] = useState(false);
+  const profileFileRef = useRef<HTMLInputElement>(null);
+
+  const uploadProfileImage = async (file: File): Promise<string> => {
+    try {
+      setUploadingProfile(true);
+      const response = await fetch('/api/objects/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+      });
+      if (!response.ok) throw new Error('Failed to get upload URL');
+      const { url } = await response.json();
+      const uploadResponse = await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+      if (!uploadResponse.ok) throw new Error('Failed to upload image');
+      const downloadResponse = await fetch('/api/objects/download-url', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName: file.name }),
+      });
+      if (!downloadResponse.ok) return `/objects/uploads/${file.name}`;
+      const { downloadUrl } = await downloadResponse.json();
+      return downloadUrl;
+    } finally {
+      setUploadingProfile(false);
+    }
+  };
+
+  const onPickProfileImage = () => profileFileRef.current?.click();
+
+  const onProfileFileChange = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please choose an image file', variant: 'destructive' });
+      return;
+    }
+    try {
+      const url = await uploadProfileImage(file);
+      setCommunityForm(prev => ({ ...prev, cover_image: url }));
+      toast({ title: 'Image uploaded', description: 'Profile image set for this community.' });
+    } catch (e: any) {
+      toast({ title: 'Upload failed', description: e?.message || 'Could not upload image', variant: 'destructive' });
+    }
+  };
   // Use actual creator status from user account - fix nested user object
   // Handle both possible data structures: { user: {...} } or direct { ... }
   const isCreator = Boolean(user?.user?.is_creator || user?.is_creator);
@@ -256,6 +307,7 @@ export default function Communities() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-emerald-50">
       <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex justify-between items-start mb-4">
@@ -457,9 +509,9 @@ export default function Communities() {
                 <p className="mt-2 text-gray-600">Loading communities...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
                 {filteredCommunities.map((community: Community) => (
-                  <Card key={community.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={community.id} className="hover:shadow-lg transition-shadow max-w-md w-full mx-auto">
                     <div className="cursor-pointer" onClick={() => {
                       // Only navigate if not clicking on buttons
                       if (!community.creator_id === ((user as any)?.user?.id || (user as any)?.id) && !community.isMember) {
@@ -572,9 +624,9 @@ export default function Communities() {
 
           {/* Trending Plans Tab */}
           <TabsContent value="trending" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
               {trendingPlans.map((plan: SharedMealPlan) => (
-                <Card key={plan.id} className="hover:shadow-lg transition-shadow">
+                <Card key={plan.id} className="hover:shadow-lg transition-shadow max-w-md w-full mx-auto">
                   <div className="aspect-video relative bg-gray-100 rounded-t-lg overflow-hidden">
                     {plan.preview_images && plan.preview_images[0] ? (
                       <img 
@@ -631,9 +683,9 @@ export default function Communities() {
 
           {/* Top Creators Tab */}
           <TabsContent value="creators" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
               {topCreators.map((creator: Creator, index: number) => (
-                <Card key={creator.user.id} className="hover:shadow-lg transition-shadow">
+                <Card key={creator.user.id} className="hover:shadow-lg transition-shadow max-w-md w-full mx-auto">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -696,6 +748,7 @@ export default function Communities() {
           </TabsContent>
         </Tabs>
       </div>
+      </div>
 
       {/* Community Creation Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
@@ -745,13 +798,28 @@ export default function Communities() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="cover_image">Cover Image URL (Optional)</Label>
-              <Input
-                id="cover_image"
-                placeholder="https://example.com/image.jpg"
-                value={communityForm.cover_image}
-                onChange={(e) => setCommunityForm(prev => ({ ...prev, cover_image: e.target.value }))}
-              />
+              <Label htmlFor="cover_image">Profile Image</Label>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded bg-gray-200 overflow-hidden flex items-center justify-center">
+                  {communityForm.cover_image ? (
+                    <img src={communityForm.cover_image} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-gray-500">No image</span>
+                  )}
+                </div>
+                <Input
+                  id="cover_image"
+                  placeholder="Paste image URL (or add upload later)"
+                  value={communityForm.cover_image}
+                  onChange={(e) => setCommunityForm(prev => ({ ...prev, cover_image: e.target.value }))}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={onPickProfileImage} disabled={uploadingProfile}>
+                  {uploadingProfile ? 'Uploading...' : 'Upload'}
+                </Button>
+                <input ref={profileFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onProfileFileChange(e.target.files)} />
+              </div>
+              <p className="text-xs text-gray-500">You can change this later from the community profile.</p>
             </div>
           </div>
           <div className="flex justify-end gap-2">

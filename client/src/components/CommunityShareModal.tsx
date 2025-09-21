@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight, Upload, X, Send } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ImageLightbox from "./ImageLightbox";
 
 interface Recipe {
   id?: number;
@@ -58,6 +59,7 @@ export function CommunityShareModal({
   const [message, setMessage] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   
   const { toast } = useToast();
@@ -130,6 +132,7 @@ export function CommunityShareModal({
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
+    setIsLightboxOpen(false);
   };
 
   const handleShare = async () => {
@@ -254,11 +257,17 @@ export function CommunityShareModal({
             <label className="block text-xs sm:text-sm font-medium mb-1">Add Image (Optional)</label>
             {imagePreview ? (
               <div className="relative">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
-                  className="w-full h-20 sm:h-32 object-cover rounded"
-                />
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="block w-full"
+                >
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="w-full h-20 sm:h-32 object-cover rounded cursor-zoom-in"
+                  />
+                </button>
                 <Button
                   type="button"
                   variant="secondary"
@@ -268,6 +277,12 @@ export function CommunityShareModal({
                 >
                   <X className="h-3 w-3" />
                 </Button>
+                <ImageLightbox
+                  src={imagePreview}
+                  alt="Preview"
+                  open={isLightboxOpen}
+                  onClose={() => setIsLightboxOpen(false)}
+                />
               </div>
             ) : (
               <div className="border border-dashed border-gray-300 rounded p-2">

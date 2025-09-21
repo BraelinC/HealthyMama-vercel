@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { ImageUploader } from '@/components/ImageUploader';
+// Advanced composer overlay is used for main post composer, not here
+import ImageLightbox from '@/components/ImageLightbox';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, ThumbsUp, Reply, Send, MoreHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,10 +38,11 @@ interface CommentsSectionProps {
   onToggle?: () => void;
 }
 
-function CommentItem({ comment, communityId, onReply }: { 
+function CommentItem({ comment, communityId, onReply, onImageClick }: { 
   comment: Comment; 
   communityId: number; 
   onReply: (commentId: number) => void;
+  onImageClick: (comment: Comment, imageUrl: string) => void;
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const hasReplies = comment.children && comment.children.length > 0;
@@ -92,7 +95,7 @@ function CommentItem({ comment, communityId, onReply }: {
     <div className="space-y-3">
       <div className="flex gap-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
-          <AvatarFallback className="bg-purple-600 text-white text-sm">
+          <AvatarFallback className="text-sm bg-gradient-to-br from-purple-500 to-emerald-500 text-white font-semibold">
             {comment.author?.firstName?.[0] || (comment.author as any)?.full_name?.[0] || 'U'}
           </AvatarFallback>
         </Avatar>
@@ -116,12 +119,18 @@ function CommentItem({ comment, communityId, onReply }: {
             {comment.images && comment.images.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-2">
                 {comment.images.map((image, index) => (
-                  <img
+                  <button
                     key={index}
-                    src={image}
-                    alt={`Comment image ${index + 1}`}
-                    className="rounded-lg w-full h-24 object-cover"
-                  />
+                    type="button"
+                    onClick={() => onImageClick(comment, image)}
+                    className="block text-left"
+                  >
+                    <img
+                      src={image}
+                      alt={`Comment image ${index + 1}`}
+                      className="rounded-lg w-full h-24 object-cover cursor-zoom-in"
+                    />
+                  </button>
                 ))}
               </div>
             )}
@@ -197,6 +206,7 @@ function CommentItem({ comment, communityId, onReply }: {
               comment={reply}
               communityId={communityId}
               onReply={onReply}
+              onImageClick={onImageClick}
             />
           ))}
         </div>
@@ -252,7 +262,7 @@ function CommentForm({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-3 space-y-3">
+    <div className="bg-gray-800 rounded-lg px-3 py-4 space-y-3">
       <Textarea
         placeholder={placeholder}
         value={content}
@@ -294,6 +304,7 @@ function CommentForm({
           </Button>
         </div>
       </div>
+
     </div>
   );
 }
@@ -306,6 +317,9 @@ export function CommentsSection({
   onToggle 
 }: CommentsSectionProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxComment, setLightboxComment] = useState<Comment | null>(null);
 
   const { data: comments = [], isLoading } = useQuery({
     queryKey: [`/api/communities/${communityId}/posts/${postId}/comments`],
@@ -317,83 +331,112 @@ export function CommentsSection({
     setReplyingTo(replyingTo === commentId ? null : commentId);
   };
 
+  const handleImageClick = (comment: Comment, imageUrl: string) => {
+    setLightboxComment(comment);
+    setLightboxSrc(imageUrl);
+    setLightboxOpen(true);
+  };
+
   if (!isExpanded) {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onToggle}
-        className="text-gray-400 hover:text-white p-2 h-auto w-full justify-start"
-      >
-        <MessageCircle className="w-4 h-4 mr-2" />
-        <span className="text-sm">Add a comment</span>
-      </Button>
+      <div className="max-w-2xl mx-auto w-full">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          className="text-gray-400 hover:text-white p-2 h-auto w-full justify-start"
+        >
+          <MessageCircle className="w-4 h-4 mr-2" />
+          <span className="text-sm">Add a comment</span>
+        </Button>
+      </div>
     );
   }
 
   return (
     <Card className="bg-gray-800 border-gray-700 mt-4">
-      <CardContent className="p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h3 className="font-medium text-white">
-            {commentsCount === 0 ? 'Comments' : `${commentsCount} ${commentsCount === 1 ? 'Comment' : 'Comments'}`}
-          </h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className="text-gray-400 hover:text-white p-1"
-          >
-            <ChevronUp className="w-4 h-4" />
-          </Button>
+      <CardContent className="p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-white">
+              {commentsCount === 0 ? 'Comments' : `${commentsCount} ${commentsCount === 1 ? 'Comment' : 'Comments'}`}
+            </h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className="text-gray-400 hover:text-white p-1"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Comment Form */}
+          <CommentForm
+            postId={postId}
+            communityId={communityId}
+            onSuccess={() => {}}
+          />
+
+          {/* Comments List */}
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500" />
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="text-center py-6 text-gray-400">
+              <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No comments yet. Be the first to comment!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {comments.map((comment: Comment) => (
+                <div key={comment.id}>
+                  <CommentItem
+                    comment={comment}
+                    communityId={communityId}
+                    onReply={handleReply}
+                    onImageClick={handleImageClick}
+                  />
+                  
+                  {/* Reply Form */}
+                  {replyingTo === comment.id && (
+                    <div className="ml-8 mt-3">
+                      <CommentForm
+                        postId={postId}
+                        communityId={communityId}
+                        parentId={comment.id}
+                        placeholder={`Reply to ${comment.author.firstName || 'this comment'}...`}
+                        onSuccess={() => setReplyingTo(null)}
+                        onCancel={() => setReplyingTo(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Comment Form */}
-        <CommentForm
-          postId={postId}
-          communityId={communityId}
-          onSuccess={() => {}}
-        />
-
-        {/* Comments List */}
-        {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500" />
-          </div>
-        ) : comments.length === 0 ? (
-          <div className="text-center py-6 text-gray-400">
-            <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No comments yet. Be the first to comment!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {comments.map((comment: Comment) => (
-              <div key={comment.id}>
-                <CommentItem
-                  comment={comment}
-                  communityId={communityId}
-                  onReply={handleReply}
-                />
-                
-                {/* Reply Form */}
-                {replyingTo === comment.id && (
-                  <div className="ml-8 mt-3">
-                    <CommentForm
-                      postId={postId}
-                      communityId={communityId}
-                      parentId={comment.id}
-                      placeholder={`Reply to ${comment.author.firstName || 'this comment'}...`}
-                      onSuccess={() => setReplyingTo(null)}
-                      onCancel={() => setReplyingTo(null)}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </CardContent>
+      {/* Messaging-style overlay for comment images */}
+      <ImageLightbox
+        src={lightboxSrc || ''}
+        alt={lightboxSrc || undefined}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        title={lightboxComment ? `${(lightboxComment.author as any)?.full_name || lightboxComment.author?.firstName || 'User'} — ${new Date(lightboxComment.created_at).toLocaleString()}` : undefined}
+      >
+        {lightboxComment && (
+          <CommentForm
+            postId={postId}
+            communityId={communityId}
+            parentId={lightboxComment.id}
+            placeholder="Write a comment..."
+            onSuccess={() => setLightboxOpen(false)}
+          />
+        )}
+      </ImageLightbox>
     </Card>
   );
 }

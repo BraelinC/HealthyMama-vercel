@@ -248,7 +248,7 @@ export default function PostDetail() {
             <div className="flex items-start justify-between mb-4">
               <div className="flex gap-3">
                 <Avatar className="w-12 h-12">
-                  <AvatarFallback className="bg-blue-600 text-white">
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-emerald-500 text-white font-semibold">
                     {post.username[0]}
                   </AvatarFallback>
                 </Avatar>

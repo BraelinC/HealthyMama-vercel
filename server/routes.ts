@@ -5137,6 +5137,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update a community (creator only)
+  app.put("/api/communities/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const communityId = Number(req.params.id);
+
+      // Verify the requester is the creator
+      const [community] = await db.select()
+        .from(communities)
+        .where(eq(communities.id, communityId));
+
+      if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+      }
+
+      if (community.creator_id !== userId) {
+        return res.status(403).json({ message: "Only the creator can update this community" });
+      }
+
+      const { name, description, category, cover_image, is_public, settings } = req.body || {};
+
+      const [updated] = await db.update(communities)
+        .set({
+          name: name ?? community.name,
+          description: description ?? community.description,
+          category: category ?? community.category,
+          cover_image: cover_image ?? community.cover_image,
+          is_public: typeof is_public === 'boolean' ? is_public : community.is_public,
+          settings: settings ?? community.settings,
+          updated_at: new Date(),
+        })
+        .where(eq(communities.id, communityId))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating community:", error);
+      res.status(500).json({ message: "Failed to update community" });
+    }
+  });
+
   // Join a community
   app.post("/api/communities/:id/join", authenticateToken, async (req: any, res) => {
     try {

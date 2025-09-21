@@ -1,0 +1,401 @@
+  };
+
+  const removeIngredient = (id: string) => {
+    if (lessonData.ingredients.length > 1) {
+      setLessonData({
+        ...lessonData,
+        ingredients: lessonData.ingredients.filter(ing => ing.id !== id)
+      });
+    }
+  };
+
+  const updateIngredient = (id: string, field: keyof Ingredient, value: string) => {
+    setLessonData({
+      ...lessonData,
+      ingredients: lessonData.ingredients.map(ing => 
+        ing.id === id ? { ...ing, [field]: value } : ing
+      )
+    });
+  };
+
+  // Recipe instruction management  
+  const addInstruction = () => {
+    const newId = (lessonData.instructions.length + 1).toString();
+    const newStep = lessonData.instructions.length + 1;
+    setLessonData({
+      ...lessonData,
+      instructions: [...lessonData.instructions, { id: newId, step: newStep, text: '' }]
+    });
+  };
+
+  const removeInstruction = (id: string) => {
+    if (lessonData.instructions.length > 1) {
+      const updatedInstructions = lessonData.instructions
+        .filter(inst => inst.id !== id)
+        .map((inst, index) => ({ ...inst, step: index + 1 }));
+      
+      setLessonData({
+        ...lessonData,
+        instructions: updatedInstructions
+      });
+    }
+  };
+
+  const updateInstruction = (id: string, text: string) => {
+    setLessonData({
+      ...lessonData,
+      instructions: lessonData.instructions.map(inst => 
+        inst.id === id ? { ...inst, text } : inst
+      )
+    });
+  };
+
+  // Add a new section
+  const addSection = (type: "about" | "custom") => {
+    const template = SECTION_TEMPLATES[selectedTemplate];
+    const newSection: LessonSection = {
+      section_type: type,
+      title: template?.title || "Custom Section",
+      content: template?.content || "",
+      template_id: type === "about" ? selectedTemplate : undefined,
+      display_order: lessonData.sections?.length || 0,
+      is_visible: true,
+    };
+
+    setLessonData({
+      ...lessonData,
+      sections: [...(lessonData.sections || []), newSection],
+    });
+  };
+
+  // Update a section
+  const updateSection = (index: number, updates: Partial<LessonSection>) => {
+    const sections = [...(lessonData.sections || [])];
+    sections[index] = { ...sections[index], ...updates };
+    setLessonData({ ...lessonData, sections });
+  };
+
+  // Delete a section
+  const deleteSection = (index: number) => {
+    const sections = (lessonData.sections || []).filter((_, i) => i !== index);
+    setLessonData({ ...lessonData, sections });
+  };
+
+  // Reorder sections
+  const moveSection = (index: number, direction: "up" | "down") => {
+    const sections = [...(lessonData.sections || [])];
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= sections.length) return;
+
+    [sections[index], sections[newIndex]] = [sections[newIndex], sections[index]];
+    sections.forEach((section, i) => {
+      section.display_order = i;
+    });
+
+    setLessonData({ ...lessonData, sections });
+  };
+
+
+  // Extracted section blocks for reuse (desktop and mobile)
+  const basicInfoSection = (
+    <Card className="bg-blue-950 border-blue-700">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white">Basic Information</CardTitle>
+          <Switch
+            checked={sectionStates.basicInfo}
+            onCheckedChange={(checked) => updateSectionState('basicInfo', checked)}
+            className="data-[state=checked]:bg-purple-600"
+          />
+        </div>
+      </CardHeader>
+      {sectionStates.basicInfo && (
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Lesson Title
+              </label>
+              <Input
+                value={lessonData.title}
+                onChange={(e) => setLessonData({ ...lessonData, title: e.target.value })}
+                placeholder="e.g., Week 1: Meal Prep Basics"
+                className="bg-blue-900/40 border-blue-700 text-blue-100"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Emoji</label>
+              <Select
+                value={lessonData.emoji}
+                onValueChange={(value) => setLessonData({ ...lessonData, emoji: value })}
+              >
+                <SelectTrigger className="bg-blue-900/40 border-blue-700 text-blue-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-blue-950 border-blue-700" style={{zIndex: 100006}}>
+                  {["🍽️", "🥗", "🍝", "🍜", "🍱", "🍲", "🥘", "🍳", "🥙", "🌮", "🍕", "🍔"].map(
+                    (emoji) => (
+                      <SelectItem key={emoji} value={emoji} className="text-white">
+                        {emoji}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Description
+            </label>
+            <Textarea
+              value={lessonData.description}
+              onChange={(e) => setLessonData({ ...lessonData, description: e.target.value })}
+              placeholder="Brief description of what students will learn..."
+              className="bg-blue-900/40 border-blue-700 text-blue-100"
+              rows={3}
+            />
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+
+  const mediaVideoSection = (
+    <Card className="bg-blue-950 border-blue-700">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white">Media & Video</CardTitle>
+          <Switch
+            checked={sectionStates.mediaVideo}
+            onCheckedChange={(checked) => updateSectionState('mediaVideo', checked)}
+            className="data-[state=checked]:bg-purple-600"
+          />
+        </div>
+      </CardHeader>
+      {sectionStates.mediaVideo && (
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-300">YouTube Video</label>
+            <div className="flex items-center gap-2">
+              <Youtube className="h-5 w-5 text-red-500" />
+              <Input
+                value={lessonData.youtube_video_id || ""}
+                onChange={(e) => setLessonData({ ...lessonData, youtube_video_id: extractYouTubeId(e.target.value) })}
+                placeholder="YouTube ID or URL"
+                className="bg-blue-900/40 border-blue-700 text-blue-100 flex-1"
+              />
+            </div>
+            {lessonData.youtube_video_id && (
+              <div className="aspect-video w-full">
+                <iframe
+                  className="w-full h-full rounded"
+                  src={buildYouTubeEmbedUrl(lessonData.youtube_video_id)}
+                  title="Lesson Video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">Cover Image</label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={() => document.getElementById('lesson-image-input')?.click()}
+              >
+                Choose Image
+              </Button>
+              <input
+                id="lesson-image-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    setLessonData({ ...lessonData, image_url: reader.result as string });
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </div>
+            {lessonData.image_url && (
+              <img src={lessonData.image_url} alt="Cover" className="w-full max-w-md rounded-lg" />
+            )}
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+
+  const recipeDetailsSection = (
+    <Card className="bg-blue-950 border-blue-700">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white">Recipe Details</CardTitle>
+          <Switch
+            checked={sectionStates.recipeDetails}
+            onCheckedChange={(checked) => updateSectionState('recipeDetails', checked)}
+            className="data-[state=checked]:bg-purple-600"
+          />
+        </div>
+      </CardHeader>
+      {sectionStates.recipeDetails && (
+        <CardContent className="p-6">
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-3 mb-6 gap-2">
+              <TabsTrigger
+                value="ingredients"
+                className="rounded-lg bg-blue-900/50 border border-blue-700 data-[state=active]:bg-purple-600 data-[state=active]:text-white text-blue-100 px-2 py-1 text-[11px] leading-tight sm:text-sm whitespace-normal break-words text-center"
+              >
+                Ingredients
+              </TabsTrigger>
+              <TabsTrigger
+                value="instructions"
+                className="rounded-lg bg-blue-900/50 border border-blue-700 data-[state=active]:bg-purple-600 data-[state=active]:text-white text-blue-100 px-2 py-1 text-[11px] leading-tight sm:text-sm whitespace-normal break-words text-center"
+              >
+                Instructions
+              </TabsTrigger>
+              <TabsTrigger
+                value="nutrition"
+                className="rounded-lg bg-blue-900/50 border border-blue-700 data-[state=active]:bg-purple-600 data-[state=active]:text-white text-blue-100 px-2 py-1 text-[11px] leading-tight sm:text-sm whitespace-normal break-words text-center"
+              >
+                Nutrition
+              </TabsTrigger>
+            </TabsList>
+
+
+            {/* Ingredients Tab */}
+            <TabsContent value="ingredients" className="space-y-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Ingredients</h3>
+                <Button onClick={addIngredient} size="sm" className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Ingredient
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {lessonData.ingredients.map((ingredient) => (
+                  <div key={ingredient.id} className="flex gap-2 items-center">
+                    <div className="flex-[3] min-w-0">
+                      <Input
+                        placeholder="Ingredient name"
+                        value={ingredient.name}
+                        onChange={(e) => updateIngredient(ingredient.id, 'name', e.target.value)}
+                        className="bg-blue-900/40 border-blue-700 text-blue-100"
+                      />
+                    </div>
+                    <div className="w-12 sm:w-16">
+                      <Input
+                        placeholder="1"
+                        value={ingredient.amount}
+                        onChange={(e) => updateIngredient(ingredient.id, 'amount', e.target.value)}
+                        className="bg-blue-900/40 border-blue-700 text-blue-100 text-center"
+                      />
+                    </div>
+                    <div className="w-20 sm:w-24">
+                      <Input
+                        placeholder="cup"
+                        value={ingredient.unit}
+                        onChange={(e) => updateIngredient(ingredient.id, 'unit', e.target.value)}
+                        className="bg-blue-900/40 border-blue-700 text-blue-100"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => removeIngredient(ingredient.id)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-400 hover:text-red-300 p-1"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* Instructions Tab */}
+            <TabsContent value="instructions" className="space-y-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Instructions</h3>
+                <Button onClick={addInstruction} size="sm" className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Step
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {lessonData.instructions.map((instruction) => (
+                  <div key={instruction.id} className="flex gap-2 items-start">
+                    <div className="w-7 h-7 bg-purple-600 rounded-md flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mt-1">
+                      {instruction.step}
+                    </div>
+                    <div className="flex-1">
+                      <Textarea
+                        placeholder="Describe this step..."
+                        value={instruction.text}
+                        onChange={(e) => updateInstruction(instruction.id, e.target.value)}
+                        rows={2}
+                        className="bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => removeInstruction(instruction.id)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-400 hover:text-red-300 p-1 mt-1"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* Nutrition Tab */}
+            <TabsContent value="nutrition" className="space-y-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-300 mb-2 block">Calories</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={lessonData.nutrition_info?.calories ?? ''}
+                      onChange={(e) => setLessonData({
+                        ...lessonData,
+                        nutrition_info: { ...(lessonData.nutrition_info || { protein:0, carbs:0, fat:0, calories:0 }), calories: parseInt(e.target.value) || 0 }
+                      })}
+                      className="bg-blue-900/40 border-blue-700 text-blue-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-300 mb-2 block">Protein (g)</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={lessonData.nutrition_info?.protein ?? ''}
+                      onChange={(e) => setLessonData({
+                        ...lessonData,
+                        nutrition_info: { ...(lessonData.nutrition_info || { protein:0, carbs:0, fat:0, calories:0 }), protein: parseInt(e.target.value) || 0 }
+                      })}
+                      className="bg-blue-900/40 border-blue-700 text-blue-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-300 mb-2 block">Carbs (g)</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={lessonData.nutrition_info?.carbs ?? ''}
+                      onChange={(e) => setLessonData({
+                        ...lessonData,

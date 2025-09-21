@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import RecipeCard from "@/components/RecipeCard";
 import RecipeDisplay from "@/components/RecipeDisplay";
+import InlineLessonEditor from "@/components/community/InlineLessonEditor";
 import {
   Dialog,
   DialogContent,
@@ -360,16 +361,36 @@ export function LessonEditor({
     basicInfo: true,
     mediaVideo: true,
     recipeDetails: true,
+    cookingDetails: true,
     lessonSections: true,
   });
 
   // Recipe tab management
   const [activeTab, setActiveTab] = useState("basics");
 
+  // Servings display toggle for preview badge
+  const [servingsEnabled, setServingsEnabled] = useState<boolean>(true);
+  useEffect(() => {
+    setServingsEnabled((existingLessonData?.servings ?? lesson?.servings ?? lessonData.servings ?? 0) > 0);
+  }, []);
+
+  // Keep nutrition_info.servings in sync with toggle and value
+  useEffect(() => {
+    setLessonData((prev) => {
+      const current = prev.nutrition_info?.servings as any;
+      const should = servingsEnabled ? prev.servings : undefined;
+      if (current === should) return prev;
+      const info: any = { ...(prev.nutrition_info || {}) };
+      if (servingsEnabled) info.servings = prev.servings; else delete info.servings;
+      return { ...prev, nutrition_info: info } as any;
+    });
+  }, [servingsEnabled, lessonData.servings]);
+
   // Preview window tracking for real-time updates
   const [previewIsOpen, setPreviewIsOpen] = useState(false);
-  // Mobile inline preview overlay
+  // Overlay preview control (works on desktop and mobile)
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
   const mobilePreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Mobile detection and horizontal sections state
@@ -377,7 +398,7 @@ export function LessonEditor({
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
   const [currentSection, setCurrentSection] = useState(0);
-  const sections = ['basic', 'media', 'recipe', 'lessons'];
+  const sections = ['basic', 'media', 'recipe', 'cooking', 'lessons'];
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   // Mobile preview tabs (Ingredients, Instructions, Nutrition)
@@ -592,21 +613,13 @@ export function LessonEditor({
     const previewData = collectCompletePreviewData();
     const previewId = lessonData.id || 'new';
 
-    // Save to sessionStorage for desktop preview page and for consistency
+    // Keep data in sessionStorage so re-open preserves state (optional)
     sessionStorage.setItem(`lesson-preview-${previewId}`, JSON.stringify(previewData));
 
-    if (isMobile) {
-      // On mobile, show inline overlay instead of a new tab
-      setMobilePreviewOpen(true);
-      setPreviewIsOpen(true);
-      return;
-    }
-
-    // Desktop: open a new tab
+    // Show in-app dark overlay preview (published-style for creators)
     setPreviewIsOpen(true);
-    const previewUrl = `/community/${communityId}/lesson/${previewId}/preview`;
-    const previewWindow = window.open(previewUrl, '_blank');
-    if (previewWindow) previewWindow.focus();
+    setShowPreviewOverlay(true);
+    if (isMobile) setMobilePreviewOpen(true);
   };
 
   // Auto-save preview data for real-time updates
@@ -1133,6 +1146,51 @@ export function LessonEditor({
     </Card>
   );
 
+  // Compact bar placed above Recipe Details
+  const cookingMetaBar = (
+    <div className="bg-blue-950 border border-blue-700 rounded-lg p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-300">Servings</label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">Show</span>
+              <Switch
+                checked={servingsEnabled}
+                onCheckedChange={(v) => setServingsEnabled(!!v)}
+                className="data-[state=checked]:bg-purple-600"
+              />
+            </div>
+          </div>
+          <Input
+            type="number"
+            min={1}
+            value={lessonData.servings}
+            onChange={(e) => setLessonData({ ...lessonData, servings: Math.max(1, parseInt(e.target.value) || 1) })}
+            disabled={!servingsEnabled}
+            className="bg-blue-900/40 border-blue-700 text-blue-100 disabled:opacity-50"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">Difficulty (1-5)</label>
+          <Select
+            value={lessonData.difficulty_level.toString()}
+            onValueChange={(value) => setLessonData({ ...lessonData, difficulty_level: parseInt(value) })}
+          >
+            <SelectTrigger className="bg-blue-900/40 border-blue-700 text-blue-100">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-blue-950 border-blue-700" style={{zIndex: 100006}}>
+              {[1,2,3,4,5].map(n => (
+                <SelectItem key={n} value={n.toString()} className="text-white">Level {n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+
   const lessonSectionsSection = (
     <Card className="bg-blue-950 border-blue-700">
       <CardHeader>
@@ -1352,6 +1410,11 @@ export function LessonEditor({
                   {mediaVideoSection}
                 </div>
 
+                {/* Meta Bar (Servings + Difficulty) */}
+                <div className="w-full flex-shrink-0 p-1 sm:p-3 overflow-y-auto">
+                  {cookingMetaBar}
+                </div>
+
                 {/* Section 3: Recipe Details */}
                 <div className="w-full flex-shrink-0 p-1 sm:p-3 overflow-y-auto">
                   {recipeDetailsSection}
@@ -1385,45 +1448,27 @@ export function LessonEditor({
             <div className="overflow-y-auto p-6 space-y-6 h-full">
               {basicInfoSection}
               {mediaVideoSection}
+              {cookingMetaBar}
               {recipeDetailsSection}
               {lessonSectionsSection}
             </div>
           )}
         </div>
-        {/* Mobile Preview Overlay (inline fast render) - use RecipeDisplay card */}
-        {isMobile && mobilePreviewOpen && (
-          <div className="fixed inset-0 z-[2000000] bg-gray-900 overflow-y-auto">
-            <div className="sticky top-0 bg-gray-900 border-b border-gray-800 p-3 flex items-center">
-              <button className="text-gray-300" onClick={() => setMobilePreviewOpen(false)} aria-label="Back">← Back</button>
-              <div className="ml-2 font-semibold text-white">Preview</div>
-            </div>
-            <div className="max-w-md mx-auto p-3">
-              <RecipeDisplay 
-                recipe={mapLessonToRecipe(lessonData)} 
-                variant="dark" 
-                headerAboveVideo={true}
-                forceDescriptionOpen={true}
-                hideDescriptionToggle={true}
+        {/* Unified Preview Overlay rendered above the page */}
+        {showPreviewOverlay && (
+          <div className="fixed inset-0 z-[2000000] bg-black/70 backdrop-blur-sm overflow-auto p-2 sm:p-4">
+            <div className="max-w-5xl mx-auto">
+              <InlineLessonEditor
+                lesson={lessonData}
+                communityId={communityId}
+                courseId={courseId}
+                isCreator={true}
+                onClose={() => {
+                  setShowPreviewOverlay(false);
+                  setMobilePreviewOpen(false);
+                  setPreviewIsOpen(false);
+                }}
               />
-              {lessonData.sections && lessonData.sections.length > 0 && (
-                <div className="mt-4 bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
-                  <div className="text-white font-semibold">Lesson Sections</div>
-                  <div className="space-y-2">
-                    {lessonData.sections.map((section: any, idx: number) => (
-                      <div key={idx} className="bg-gray-900 border border-gray-800 rounded p-3">
-                        <div className="text-white font-medium mb-1">
-                          {section.title || `Section ${idx + 1}`}
-                        </div>
-                        {section.content ? (
-                          <div className="text-gray-300 whitespace-pre-wrap">{section.content}</div>
-                        ) : (
-                          <div className="text-gray-500 text-sm">No content yet.</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -1433,7 +1478,7 @@ export function LessonEditor({
   return isInline ? (
     containerContent
   ) : (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-1 sm:p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100010] p-1 sm:p-4">
       {containerContent}
     </div>
   );

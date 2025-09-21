@@ -75,21 +75,7 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-purple-100 px-6 py-4">
-        <div className="flex items-center space-x-3">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center">
-              <Bot className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-800">HealthyMama AI Assistant</h1>
-            <p className="text-sm text-gray-600">Your personal nutrition and meal planning helper</p>
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col h-screen bg-gray-900">
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
@@ -118,11 +104,11 @@ const Chat = () => {
               <div className={`px-4 py-3 rounded-2xl shadow-sm ${
                 message.sender === 'user'
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-md'
-                  : 'bg-white text-gray-800 border border-gray-100 rounded-bl-md'
+                  : 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-md'
               }`}>
                 <p className="text-sm leading-relaxed">{message.content}</p>
                 <div className={`text-xs mt-2 ${
-                  message.sender === 'user' ? 'text-purple-100' : 'text-gray-500'
+                  message.sender === 'user' ? 'text-purple-100' : 'text-gray-400'
                 }`}>
                   {formatTime(message.timestamp)}
                 </div>
@@ -140,10 +126,10 @@ const Chat = () => {
                   <Bot className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+              <div className="bg-gray-800 text-gray-100 border border-gray-700 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
                 <div className="flex items-center space-x-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                  <span className="text-sm text-gray-600">AI is thinking...</span>
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                  <span className="text-sm text-gray-300">AI is thinking...</span>
                 </div>
               </div>
             </div>
@@ -154,7 +140,7 @@ const Chat = () => {
       </div>
 
       {/* Input Area */}
-      <div className="bg-white border-t border-purple-100 px-4 py-4 shadow-sm">
+      <div className="bg-gray-800 border-t border-gray-700 px-4 py-4 shadow-sm">
         <form onSubmit={handleSubmit} className="flex items-center space-x-3">
           <div className="flex-1 relative">
             <input
@@ -163,7 +149,7 @@ const Chat = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask me about nutrition, recipes, meal planning..."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 pr-12"
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 pr-12 text-white placeholder-gray-400"
               disabled={isLoading}
             />
             <button
@@ -172,7 +158,7 @@ const Chat = () => {
               className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full transition-all duration-200 ${
                 inputValue.trim() && !isLoading
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-md'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
               }`}
             >
               {isLoading ? (
@@ -184,22 +170,6 @@ const Chat = () => {
           </div>
         </form>
 
-        {/* Quick suggestions */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {['Meal planning tips', 'Healthy recipes', 'Nutrition advice', 'Family meals'].map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => {
-                setInputValue(suggestion);
-                inputRef.current?.focus();
-              }}
-              className="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-full border border-purple-200 hover:bg-purple-100 transition-colors duration-200"
-              disabled={isLoading}
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

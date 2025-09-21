@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogOverlay } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
@@ -69,6 +69,71 @@ export default function CourseManagement({ isOpen, onClose, communityId }: Cours
 
   // Mobile detection state
   const [isMobile, setIsMobile] = useState(false);
+
+  // Deletion state
+  const deleteCourseMutation = useMutation({
+    mutationFn: async (courseId: number) => {
+      const token = localStorage.getItem('auth_token');
+      const resp = await fetch(`/api/communities/${communityId}/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!resp.ok) throw new Error('Failed to delete course');
+      return resp.json();
+    },
+    onSuccess: (_data, courseId) => {
+      toast({ title: 'Course Deleted', description: 'The course was deleted successfully.' });
+      // Refresh courses list
+      queryClient.invalidateQueries({ queryKey: [`/api/communities/${communityId}/courses`] });
+      // If we deleted the selected course, pick another
+      if (selectedCourseId === courseId) {
+        const remaining = courses.filter((c: Course) => c.id !== courseId);
+        setSelectedCourseId(remaining[0]?.id ?? null);
+      }
+    },
+    onError: () => {
+      toast({ title: 'Delete Failed', description: 'Could not delete the course.', variant: 'destructive' });
+    },
+  });
+
+  const deleteModuleMutation = useMutation({
+    mutationFn: async (moduleId: number) => {
+      const token = localStorage.getItem('auth_token');
+      const resp = await fetch(`/api/communities/${communityId}/courses/${selectedCourseId}/modules/${moduleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!resp.ok) throw new Error('Failed to delete module');
+      return resp.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Module Deleted', description: 'Module removed from the course.' });
+      queryClient.invalidateQueries({ queryKey: [`/api/communities/${communityId}/courses`] });
+      setSelectedModuleId(null);
+    },
+    onError: () => {
+      toast({ title: 'Delete Failed', description: 'Could not delete the module.', variant: 'destructive' });
+    },
+  });
+
+  const handleDeleteCourse = (course: Course) => {
+    const ok = confirm(`Delete "${course.title}"? This cannot be undone.`);
+    if (!ok) return;
+    deleteCourseMutation.mutate(course.id);
+  };
+
+  const handleDeleteModule = (moduleId: number | null) => {
+    if (!moduleId) return;
+    const ok = confirm('Delete this module? Lessons will remain as standalone.');
+    if (!ok) return;
+    deleteModuleMutation.mutate(moduleId);
+  };
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -304,12 +369,13 @@ export default function CourseManagement({ isOpen, onClose, communityId }: Cours
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogOverlay className="bg-black/80 z-[100000]" />
-      <DialogContent className="max-w-7xl w-[98vw] max-h-[95vh] bg-gray-900 border-gray-700 text-white z-[100001] flex flex-col">
+      {/* Ensure the dialog itself stays within the viewport and lets inner sections scroll */}
+      <DialogContent className="max-w-7xl w-[98vw] h-[98vh] overflow-hidden bg-gray-900 border-gray-700 text-white z-[100001] flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-gray-700">
           <DialogTitle className="text-2xl font-bold text-white">Course Management</DialogTitle>
         </DialogHeader>
 
+        {/* min-h-0 here is important for nested flex scrolling */}
         <div className="flex flex-col md:flex-row flex-1 min-h-0">
           {/* Initial Course Picker Overlay */}
           {showCoursePicker && (
@@ -453,11 +519,9 @@ export default function CourseManagement({ isOpen, onClose, communityId }: Cours
                         className="h-6 w-6 p-0 text-red-400 hover:text-red-300"
                         onClick={(e) => {
                           e.stopPropagation();
-                          toast({
-                            title: "Coming Soon",
-                            description: "Course deletion will be available soon!"
-                          });
+                          handleDeleteCourse(course);
                         }}
+                        disabled={deleteCourseMutation.isPending}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -470,9 +534,7 @@ export default function CourseManagement({ isOpen, onClose, communityId }: Cours
           </div>
 
           {/* Right Content - Course Details or Creation Form */}
-          <div className={`w-full md:flex-1 p-6 overflow-y-auto ${
-            isMobile && selectedCourseId ? 'flex-1' : 'h-2/3 md:flex-1'
-          }`}>
+          <div className={"w-full md:flex-1 p-6 overflow-y-auto flex-1 min-h-0"}>
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -690,25 +752,39 @@ export default function CourseManagement({ isOpen, onClose, communityId }: Cours
                           <div className="bg-gray-800 rounded-lg border border-gray-700">
                             {/* Module Selection Dropdown */}
                             <div className="p-4 border-b border-gray-700">
-                              <Select 
-                                value={selectedModuleId?.toString() || ""} 
-                                onValueChange={(value) => setSelectedModuleId(Number(value))}
-                              >
-                                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white h-12 px-4 rounded-lg text-left">
-                                  <SelectValue placeholder="Select a module" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700" style={{zIndex: 100005}}>
-                                  {modules.map((module: any) => (
-                                    <SelectItem 
-                                      key={module.id} 
-                                      value={module.id.toString()}
-                                      className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                                    >
-                                      {module.emoji} {module.title}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                  <Select 
+                                    value={selectedModuleId?.toString() || ""} 
+                                    onValueChange={(value) => setSelectedModuleId(Number(value))}
+                                  >
+                                    <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white h-12 px-4 rounded-lg text-left">
+                                      <SelectValue placeholder="Select a module" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-700" style={{zIndex: 100005}}>
+                                      {modules.map((module: any) => (
+                                        <SelectItem 
+                                          key={module.id} 
+                                          value={module.id.toString()}
+                                          className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                                        >
+                                          {module.emoji} {module.title}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  className="shrink-0"
+                                  onClick={() => handleDeleteModule(selectedModuleId)}
+                                  disabled={!selectedModuleId || deleteModuleMutation.isPending}
+                                  title="Delete selected module"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                             
                             {/* Lessons within selected module */}
@@ -721,7 +797,7 @@ export default function CourseManagement({ isOpen, onClose, communityId }: Cours
                                     courseId={selectedCourseId!}
                                     moduleId={selectedModuleId!}
                                     lessonData={selectedLessonData}
-                                    isInline={true}
+                                    isInline={false}
                                     onClose={() => {
                                       setShowLessonCreationForm(false);
                                       setEditingLessonId(null);

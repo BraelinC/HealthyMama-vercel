@@ -532,7 +532,7 @@ export default function CommunityDetail() {
                           {index + 1}
                         </Badge>
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-xs">
+                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-emerald-500 text-white font-semibold">
                             U{index + 1}
                           </AvatarFallback>
                         </Avatar>

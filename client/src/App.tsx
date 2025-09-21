@@ -30,9 +30,9 @@ import PostDetail from "@/pages/PostDetail";
 import CreatorHub from "@/pages/CreatorHub";
 import CommunityManage from "@/pages/CommunityManage";
 import LessonEditor from "@/pages/LessonEditor";
-import LessonPreview from "@/components/community/LessonPreview";
 import Favorites from "@/pages/Favorites";
 import BatchExtractionTest from "@/pages/BatchExtractionTest";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // ========== LANDING PAGE TOGGLE ==========
 // Set this to false to skip the landing page and go directly to login
@@ -345,7 +345,7 @@ function Router() {
         )} />
         {/* Full-screen lesson editor without header/footer */}
         <Route path="/community/:communityId/lesson/:lessonId" component={LessonEditor} />
-        <Route path="/community/:communityId/lesson/:lessonId/preview" component={LessonPreview} />
+        {/* Preview route removed: use in-app overlay preview instead */}
         <Route component={() => (
           <>
             <AppHeader />
@@ -385,8 +385,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <ErrorBoundary>
+          <Toaster />
+          <Router />
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );
