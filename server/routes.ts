@@ -37,10 +37,13 @@ import {
   type InsertCommunityMealCourse,
   type InsertCommunityMealCourseModule,
   type InsertCommunityMealLesson,
-  type InsertCommunityMealLessonSection
+  type InsertCommunityMealLessonSection,
+  communityAIConfigs,
+  cookbookEntries
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, isNull, desc } from "drizzle-orm";
+import { chatService } from "./chatService";
 
 // YouTube API utilities
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
@@ -170,6 +173,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error toggling creator status:", error);
       res.status(500).json({ message: "Failed to toggle creator status" });
+    }
+  });
+
+  // =======================
+  // Community AI Config
+  // =======================
+  app.put("/api/communities/:communityId/ai-config", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      if (!userId || !communityId) return res.status(400).json({ message: "Invalid params" });
+
+      const [community] = await db.select().from(communities).where(eq(communities.id, communityId));
+      if (!community) return res.status(404).json({ message: "Community not found" });
+      if (community.creator_id !== userId) return res.status(403).json({ message: "Forbidden" });
+
+      const { system_prompt, model, temperature, max_tokens, top_p, tools, memory_enabled, short_term_limit } = req.body || {};
+      const isGpt5 = (model || "").toString().toLowerCase().startsWith("gpt-5");
+
+      // Upsert config
+      const existing = await db
+        .select()
+        .from(communityAIConfigs)
+        .where(eq(communityAIConfigs.community_id, communityId));
+
+      if (existing.length) {
+        await db
+          .update(communityAIConfigs)
+          .set({
+            system_prompt,
+            model,
+            temperature: isGpt5 ? null as any : temperature,
+            max_tokens,
+            top_p: isGpt5 ? null as any : top_p,
+            tools,
+            memory_enabled,
+            short_term_limit,
+            updated_at: new Date(),
+          })
+          .where(eq(communityAIConfigs.community_id, communityId));
+      } else {
+        await db.insert(communityAIConfigs).values({
+          community_id: communityId,
+          system_prompt,
+          model,
+          temperature: isGpt5 ? 0 as any : temperature,
+          max_tokens,
+          top_p: isGpt5 ? 10 as any : top_p,
+          tools: tools ?? [],
+          memory_enabled: memory_enabled ?? true,
+          short_term_limit: short_term_limit ?? 20,
+        });
+      }
+
+      res.json({ message: "Saved" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to save AI config" });
+    }
+  });
+
+  app.get("/api/communities/:communityId/ai-config", authenticateToken, async (req: any, res) => {
+    try {
+      const communityId = parseInt(req.params.communityId);
+      const cfg = await db
+        .select()
+        .from(communityAIConfigs)
+        .where(eq(communityAIConfigs.community_id, communityId));
+      res.json({ config: cfg[0] || null });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to fetch AI config" });
+    }
+  });
+
+  // =======================
+  // Community Cookbook Upload
+  // =======================
+  app.post("/api/communities/:communityId/cookbook", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      const { title, content, tags } = req.body || {};
+      if (!userId || !communityId || !title || !content) return res.status(400).json({ message: "Missing fields" });
+
+      const [community] = await db.select().from(communities).where(eq(communities.id, communityId));
+      if (!community) return res.status(404).json({ message: "Community not found" });
+      if (community.creator_id !== userId) return res.status(403).json({ message: "Forbidden" });
+
+      await db.insert(cookbookEntries).values({
+        community_id: communityId,
+        title,
+        content,
+        tags: Array.isArray(tags) ? tags : [],
+      });
+
+      res.json({ message: "Uploaded" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to upload" });
+    }
+  });
+
+  // =======================
+  // Community Chat Endpoints (MVP)
+  // =======================
+  app.get("/api/communities/:communityId/chats", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      if (!userId || !communityId) return res.status(400).json({ message: "Invalid params" });
+      // Ensure membership
+      await chatService.assertMembership(userId, communityId);
+      const sessions = await chatService.listSessions(userId, communityId);
+      res.json({ sessions });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to list sessions" });
+    }
+  });
+
+  app.post("/api/communities/:communityId/chats", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      if (!userId || !communityId) return res.status(400).json({ message: "Invalid params" });
+      await chatService.assertMembership(userId, communityId);
+      const sessionId = await chatService.ensureSession(userId, communityId);
+      res.json({ sessionId });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to create session" });
+    }
+  });
+
+  app.get("/api/communities/:communityId/chats/:sessionId/history", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      const sessionId = String(req.params.sessionId);
+      if (!userId || !communityId || !sessionId) return res.status(400).json({ message: "Invalid params" });
+      const messages = await chatService.getHistory(userId, communityId, sessionId);
+      res.json({ messages });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to fetch history" });
+    }
+  });
+
+  app.post("/api/communities/:communityId/chats/:sessionId/messages", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      const sessionId = String(req.params.sessionId);
+      const { message } = req.body || {};
+      if (!userId || !communityId || !sessionId || !message) return res.status(400).json({ message: "Missing fields" });
+      const result = await chatService.sendMessage({ userId, communityId, sessionId, message });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to send message" });
+    }
+  });
+
+  app.post("/api/communities/:communityId/preview", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const communityId = parseInt(req.params.communityId);
+      const { message } = req.body || {};
+      if (!userId || !communityId || !message) return res.status(400).json({ message: "Missing fields" });
+      const result = await chatService.previewResponse({ userId, communityId, message });
+      res.json(result);
+    } catch (err: any) {
+      const status = String(err?.message || "").toLowerCase().includes("forbidden") ? 403 : 500;
+      res.status(status).json({ message: err.message || "Failed to preview" });
     }
   });
 
@@ -5134,51 +5305,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating community:", error);
       res.status(500).json({ message: "Failed to create community" });
-    }
-  });
-
-  // Update a community (creator only)
-  app.put("/api/communities/:id", authenticateToken, async (req: any, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
-      const communityId = Number(req.params.id);
-
-      // Verify the requester is the creator
-      const [community] = await db.select()
-        .from(communities)
-        .where(eq(communities.id, communityId));
-
-      if (!community) {
-        return res.status(404).json({ message: "Community not found" });
-      }
-
-      if (community.creator_id !== userId) {
-        return res.status(403).json({ message: "Only the creator can update this community" });
-      }
-
-      const { name, description, category, cover_image, is_public, settings } = req.body || {};
-
-      const [updated] = await db.update(communities)
-        .set({
-          name: name ?? community.name,
-          description: description ?? community.description,
-          category: category ?? community.category,
-          cover_image: cover_image ?? community.cover_image,
-          is_public: typeof is_public === 'boolean' ? is_public : community.is_public,
-          settings: settings ?? community.settings,
-          updated_at: new Date(),
-        })
-        .where(eq(communities.id, communityId))
-        .returning();
-
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating community:", error);
-      res.status(500).json({ message: "Failed to update community" });
     }
   });
 

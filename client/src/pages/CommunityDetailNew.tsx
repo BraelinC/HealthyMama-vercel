@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import CommunityChat from "@/components/community/CommunityChat";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -2014,8 +2015,18 @@ export default function CommunityDetailNew() {
 
         {/* AI Chat Tab */}
         <TabsContent value="members" className="p-0 mt-0 pt-0 bg-gray-900">
-          <div className="h-[calc(100vh-12rem)]">
-            <Chat />
+          <div className="h-[calc(100vh-12rem)] p-4">
+            {isMember ? (
+              // Community-scoped chat with creator preview toggle
+              <CommunityChat communityId={parseInt(id || "0", 10)} />
+            ) : (
+              <Card className="bg-gray-800 border-gray-700 text-center py-12">
+                <CardContent>
+                  <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-300">Join this community to use AI Chat.</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 

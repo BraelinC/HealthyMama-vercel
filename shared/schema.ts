@@ -915,6 +915,146 @@ export type InsertCommunityPostComment = typeof communityPostComments.$inferInse
 export type CommunityPostLike = typeof communityPostLikes.$inferSelect;
 export type InsertCommunityPostLike = typeof communityPostLikes.$inferInsert;
 
+// ============================================
+// COMMUNITY CHAT + MEMORY TABLES
+// ============================================
+
+// Per-user, per-community chat session
+export const chatSessions = pgTable("chat_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  user_id: varchar("user_id").notNull().references(() => users.id),
+  community_id: integer("community_id").notNull().references(() => communities.id),
+  title: varchar("title", { length: 255 }),
+  created_at: timestamp("created_at").defaultNow(),
+  last_message_at: timestamp("last_message_at").defaultNow(),
+}, (table) => ({
+  userCommunityIdx: index("chat_sessions_user_community_idx").on(table.user_id, table.community_id),
+}));
+
+// Messages inside a session
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  session_id: uuid("session_id").notNull().references(() => chatSessions.id, { onDelete: "cascade" }),
+  community_id: integer("community_id").notNull().references(() => communities.id),
+  user_id: varchar("user_id"), // nullable for assistant/system
+  role: varchar("role", { length: 20 }).notNull(), // 'user' | 'assistant' | 'system'
+  content: text("content").notNull(),
+  token_count: integer("token_count"),
+  metadata: jsonb("metadata").default({}),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  sessionIdx: index("chat_messages_session_idx").on(table.session_id),
+  communityIdx: index("chat_messages_community_idx").on(table.community_id),
+}));
+
+// Creator-configured AI settings per community
+export const communityAIConfigs = pgTable("community_ai_configs", {
+  id: serial("id").primaryKey(),
+  community_id: integer("community_id").notNull().references(() => communities.id).unique(),
+  system_prompt: text("system_prompt").notNull(),
+  model: varchar("model", { length: 64 }).default("gpt-4o-mini"),
+  temperature: integer("temperature").default(7), // 0-10 scale
+  max_tokens: integer("max_tokens").default(800),
+  top_p: integer("top_p").default(10), // 0-10 scale
+  frequency_penalty: integer("frequency_penalty").default(0), // 0-20 scale (0-2.0 actual)
+  presence_penalty: integer("presence_penalty").default(0), // 0-20 scale (0-2.0 actual)
+  stop_sequences: jsonb("stop_sequences").default([]), // Array of stop strings
+  response_format: varchar("response_format", { length: 20 }).default("text"), // "text" | "json"
+  tools: jsonb("tools").default([]),
+  memory_enabled: boolean("memory_enabled").default(true),
+  short_term_limit: integer("short_term_limit").default(20),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// Short-term memory for chat sessions (rolling window)
+export const chatSessionMemory = pgTable("chat_session_memory", {
+  id: serial("id").primaryKey(),
+  session_id: uuid("session_id").notNull().references(() => chatSessions.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 20 }).notNull(), // 'user' | 'assistant' | 'system'
+  content: text("content").notNull(),
+  token_count: integer("token_count"),
+  sequence_order: integer("sequence_order").notNull(), // Order within session
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  sessionIdx: index("session_memory_session_idx").on(table.session_id),
+  orderIdx: index("session_memory_order_idx").on(table.session_id, table.sequence_order),
+}));
+
+// Chat analytics for tracking usage and performance
+export const chatAnalytics = pgTable("chat_analytics", {
+  id: serial("id").primaryKey(),
+  community_id: integer("community_id").notNull().references(() => communities.id),
+  user_id: varchar("user_id").references(() => users.id),
+  session_id: uuid("session_id").references(() => chatSessions.id, { onDelete: "cascade" }),
+  model_used: varchar("model_used", { length: 64 }),
+  tokens_input: integer("tokens_input").default(0),
+  tokens_output: integer("tokens_output").default(0),
+  response_time_ms: integer("response_time_ms"),
+  error_type: varchar("error_type", { length: 100 }), // null if successful
+  user_rating: integer("user_rating"), // 1-5 stars, optional feedback
+  cost_estimate: integer("cost_estimate"), // Cost in cents
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  communityIdx: index("analytics_community_idx").on(table.community_id),
+  userIdx: index("analytics_user_idx").on(table.user_id),
+  sessionIdx: index("analytics_session_idx").on(table.session_id),
+  dateIdx: index("analytics_date_idx").on(table.created_at),
+}));
+
+// Cookbook entries (chunked knowledge) per community
+export const cookbookEntries = pgTable("cookbook_entries", {
+  id: serial("id").primaryKey(),
+  community_id: integer("community_id").notNull().references(() => communities.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  tags: jsonb("tags").default([]),
+  embedding: jsonb("embedding"), // float[] stored as JSON
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  communityIdx: index("cookbook_community_idx").on(table.community_id),
+  titleIdx: index("cookbook_title_idx").on(table.title),
+}));
+
+// Long-term, community-scoped memory per user
+export const communityMemoryItems = pgTable("community_memory_items", {
+  id: serial("id").primaryKey(),
+  user_id: varchar("user_id").notNull().references(() => users.id),
+  community_id: integer("community_id").notNull().references(() => communities.id),
+  memory_type: varchar("memory_type", { length: 40 }).notNull(), // 'fact' | 'preference' | 'summary' | 'note'
+  content: text("content").notNull(),
+  embedding: jsonb("embedding"), // Vector embedding for semantic search
+  importance_score: integer("importance_score").default(50), // 0-100, higher = more important
+  access_count: integer("access_count").default(0), // How often this memory is accessed
+  last_accessed: timestamp("last_accessed").defaultNow(),
+  decay_factor: integer("decay_factor").default(100), // 0-100, decreases over time
+  metadata: jsonb("metadata").default({}),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userCommunityIdx: index("memory_user_community_idx").on(table.user_id, table.community_id),
+  importanceIdx: index("memory_importance_idx").on(table.importance_score),
+  typeIdx: index("memory_type_idx").on(table.memory_type),
+  accessIdx: index("memory_access_idx").on(table.last_accessed),
+}));
+
+// Type exports for chat + memory
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type InsertChatSession = typeof chatSessions.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+export type ChatSessionMemory = typeof chatSessionMemory.$inferSelect;
+export type InsertChatSessionMemory = typeof chatSessionMemory.$inferInsert;
+export type ChatAnalytics = typeof chatAnalytics.$inferSelect;
+export type InsertChatAnalytics = typeof chatAnalytics.$inferInsert;
+export type CommunityAIConfig = typeof communityAIConfigs.$inferSelect;
+export type InsertCommunityAIConfig = typeof communityAIConfigs.$inferInsert;
+export type CookbookEntry = typeof cookbookEntries.$inferSelect;
+export type InsertCookbookEntry = typeof cookbookEntries.$inferInsert;
+export type CommunityMemoryItem = typeof communityMemoryItems.$inferSelect;
+export type InsertCommunityMemoryItem = typeof communityMemoryItems.$inferInsert;
+
 // Storage interfaces
 export interface IStorage {
   // User operations
