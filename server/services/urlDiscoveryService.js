@@ -23,11 +23,11 @@ class UrlDiscoveryService {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
         '--disable-gpu',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding'
+        '--disable-renderer-backgrounding',
+        '--proxy-bypass-list=*'
       ]
     });
 
@@ -59,7 +59,16 @@ class UrlDiscoveryService {
 
     } catch (error) {
       console.error('🚨 URL discovery error:', error);
-      throw error;
+      // Static HTML fallback if browser discovery fails
+      try {
+        console.log('🧰 Falling back to static HTML discovery');
+        const resp = await fetch(homepageUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const html = await resp.text();
+        const urls = this.extractUrlsFromHtml(html, homepageUrl);
+        return urls;
+      } catch (e) {
+        throw error;
+      }
     } finally {
       await browser.close();
     }
@@ -97,6 +106,29 @@ class UrlDiscoveryService {
       return [];
     } catch (error) {
       console.log('⚠️ Sitemap discovery failed:', error.message);
+      return [];
+    }
+  }
+
+  extractUrlsFromHtml(html, baseUrl) {
+    try {
+      const anchorRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
+      const urls = new Set();
+      let match;
+      const baseHost = new URL(baseUrl).hostname;
+
+      while ((match = anchorRegex.exec(html)) !== null) {
+        const href = match[1];
+        try {
+          const abs = new URL(href, baseUrl);
+          if (abs.hostname === baseHost && /\/recipes?\//i.test(abs.pathname)) {
+            urls.add(abs.toString());
+          }
+        } catch {}
+      }
+
+      return Array.from(urls);
+    } catch {
       return [];
     }
   }
@@ -159,7 +191,10 @@ class UrlDiscoveryService {
           /-bars?\/?$/i,            // ends with -bar(s)
           /-muffins?\/?$/i,         // ends with -muffin(s)
           /-pancakes?\/?$/i,        // ends with -pancake(s)
-          /-waffles?\/?$/i          // ends with -waffle(s)
+          /-waffles?\/?$/i,         // ends with -waffle(s)
+          /air-fryer/i,
+          /instant-pot/i,
+          /slow-cooker/i
         ];
 
         // Recipe-related text content patterns
@@ -174,7 +209,9 @@ class UrlDiscoveryService {
           /ingredient/i,
           /delicious/i,
           /tasty/i,
-          /yummy/i
+          /yummy/i,
+          /popular/i,
+          /most\s*loved/i
         ];
 
         // Find all links on the page
@@ -198,6 +235,7 @@ class UrlDiscoveryService {
           const hasRecipeKeywords = linkText.includes('recipe') || 
                                   linkText.includes('cook') || 
                                   linkText.includes('bake') ||
+                                  linkText.includes('popular') ||
                                   linkTitle.includes('recipe') ||
                                   linkAlt.includes('recipe');
           
@@ -236,7 +274,7 @@ class UrlDiscoveryService {
         });
 
         // Also look for recipe cards or structured content
-        const recipeCards = document.querySelectorAll([
+        const recipeCardSelectors = [
           '.recipe-card',
           '.recipe-item', 
           '.post-item',
@@ -244,8 +282,12 @@ class UrlDiscoveryService {
           '.food-item',
           '.dish-item',
           '[data-recipe]',
-          '.wp-block-latest-posts__post'
-        ].join(', '));
+          '.wp-block-latest-posts__post',
+          '.posts .post',
+          'article',
+          '.archive .entry'
+        ];
+        const recipeCards = document.querySelectorAll(recipeCardSelectors.join(', '));
         
         recipeCards.forEach(card => {
           const cardLinks = card.querySelectorAll('a[href]');

@@ -22,6 +22,7 @@ interface QuestionnaireResult {
 
 interface ProfileData {
   id: number;
+  primaryGoal?: string | null;
   goalWeights: {
     cost: number;
     health: number;
@@ -65,7 +66,7 @@ export default function AIPoweredMealPlanGenerator() {
 
   // Fetch current profile data
   const { data: profileData, isLoading } = useQuery<ProfileData>({
-    queryKey: ['weight-based-profile'],
+    queryKey: ['/api/profile/weight-based'],
     queryFn: () => apiRequest('/api/profile/weight-based')
   });
 
@@ -79,7 +80,7 @@ export default function AIPoweredMealPlanGenerator() {
 
   // Save weights mutation with enhanced logging and validation
   const saveWeightsMutation = useMutation({
-    mutationFn: async (weights: typeof currentWeights) => {
+    mutationFn: async ({ weights, primaryGoal }: { weights: typeof currentWeights; primaryGoal?: string | null }) => {
       console.log('🤖 AI Generator: Starting save process');
       console.log('🤖 AI Generator: Weights to save:', weights);
       
@@ -92,9 +93,10 @@ export default function AIPoweredMealPlanGenerator() {
       );
       console.log('🤖 AI Generator: Validated weights:', validatedWeights);
       
+      const fallbackGoal = questionnaireResult?.primaryGoal || profileData?.primaryGoal || undefined;
       const result = await apiRequest('/api/profile/weight-based', {
         method: 'PUT',
-        body: JSON.stringify({ goalWeights: validatedWeights })
+        body: JSON.stringify({ goalWeights: validatedWeights, primaryGoal: primaryGoal ?? fallbackGoal })
       });
       
       console.log('🤖 AI Generator: Save successful, response:', result);
@@ -105,7 +107,7 @@ export default function AIPoweredMealPlanGenerator() {
       setHasUnsavedChanges(false);
       
       // Invalidate and refetch to verify the save worked
-      await queryClient.invalidateQueries({ queryKey: ['weight-based-profile'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/profile/weight-based'] });
       
       // Verify the save by checking what was actually stored
       setTimeout(async () => {
@@ -141,7 +143,7 @@ export default function AIPoweredMealPlanGenerator() {
     setShowQuestionnaire(false);
     
     // Auto-save the questionnaire results
-    saveWeightsMutation.mutate(result.weights);
+    saveWeightsMutation.mutate({ weights: result.weights, primaryGoal: result.primaryGoal });
     
     toast({
       title: "🤖 AI Profile Complete!",
@@ -173,7 +175,7 @@ export default function AIPoweredMealPlanGenerator() {
   // Save current weights
   const handleSave = () => {
     console.log('🤖 AI Generator: Manual save triggered');
-    saveWeightsMutation.mutate(currentWeights);
+    saveWeightsMutation.mutate({ weights: currentWeights, primaryGoal: profileData?.primaryGoal });
   };
 
   if (isLoading) {

@@ -140,8 +140,6 @@ function AppTabBar() {
   const tabs = [
     { icon: <HandPlatter className="w-5 h-5" />, label: "Search", path: "/search" },
     { icon: <ChefHat className="w-5 h-5" />, label: "Home", path: "/" },
-    { icon: <CalendarDays className="w-5 h-5" />, label: "Planner", path: "/meal-planner" },
-    { icon: <Bot className="w-5 h-5" />, label: "AI Chat", path: "/chat" },
     { icon: <Users className="w-5 h-5" />, label: "Communities", path: "/communities" },
   ];
 

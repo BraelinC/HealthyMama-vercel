@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import CommunityChat from "@/components/community/CommunityChat";
+import Mem0Chat from "@/components/community/Mem0Chat";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -961,6 +961,66 @@ export default function CommunityDetailNew() {
       });
     },
   });
+
+  // PDF extraction mutation
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfExtracting, setPdfExtracting] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const extractPdfMutation = useMutation({
+    mutationFn: async () => {
+      const { apiRequest } = await import("@/lib/queryClient");
+      setPdfExtracting(true);
+      return await apiRequest("/api/extract-recipe-from-pdf", {
+        method: "POST",
+        body: JSON.stringify({ pdfUrl })
+      });
+    },
+    onSuccess: (result) => {
+      setExtractedRecipe(result.recipe);
+      setAllExtractedRecipes([result.recipe]);
+      setSelectedExtractedRecipeIndex(0);
+      setPdfExtracting(false);
+      toast({ title: "PDF Extracted!", description: `Parsed ${result.textLength} chars.` });
+    },
+    onError: (error: any) => {
+      setPdfExtracting(false);
+      toast({ title: "PDF Extraction Failed", description: error.message || "Unable to parse PDF", variant: "destructive" });
+    }
+  });
+
+  const handleUploadPdfExtract = async () => {
+    if (!pdfFile) return;
+    try {
+      setPdfExtracting(true);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const idx = result.indexOf(',');
+            resolve(idx >= 0 ? result.slice(idx + 1) : result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfFile);
+        } catch (e) {
+          reject(e as any);
+        }
+      });
+      const { apiRequest } = await import("@/lib/queryClient");
+      const result = await apiRequest("/api/extract-recipe-from-pdf", {
+        method: "POST",
+        body: JSON.stringify({ pdfBase64: base64 })
+      });
+      setExtractedRecipe(result.recipe);
+      setAllExtractedRecipes([result.recipe]);
+      setSelectedExtractedRecipeIndex(0);
+      toast({ title: "PDF Extracted!", description: `Parsed ${result.textLength} chars.` });
+    } catch (error: any) {
+      toast({ title: "PDF Extraction Failed", description: error?.message || "Unable to parse PDF", variant: "destructive" });
+    } finally {
+      setPdfExtracting(false);
+    }
+  };
 
   // Delete post mutation
   const deletePostMutation = useMutation({
@@ -2014,11 +2074,11 @@ export default function CommunityDetailNew() {
 
 
         {/* AI Chat Tab */}
-        <TabsContent value="members" className="p-0 mt-0 pt-0 bg-gray-900">
-          <div className="h-[calc(100vh-12rem)] p-4">
+        <TabsContent value="members" className="p-0 m-0 bg-gray-900">
+          <div className="h-[calc(100vh-7rem)] bg-gray-900">
             {isMember ? (
               // Community-scoped chat with creator preview toggle
-              <CommunityChat communityId={parseInt(id || "0", 10)} />
+              <Mem0Chat communityId={parseInt(id || "0", 10)} />
             ) : (
               <Card className="bg-gray-800 border-gray-700 text-center py-12">
                 <CardContent>
@@ -2075,6 +2135,52 @@ export default function CommunityDetailNew() {
                       </>
                     )}
                   </Button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pdf-url" className="text-gray-300">Cookbook PDF URL (optional)</Label>
+                      <Input
+                        id="pdf-url"
+                        placeholder="https://example.com/cookbook.pdf"
+                        value={pdfUrl}
+                        onChange={(e) => setPdfUrl(e.target.value)}
+                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                        disabled={pdfExtracting}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        onClick={() => extractPdfMutation.mutate()}
+                        disabled={!pdfUrl.trim() || pdfExtracting}
+                        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {pdfExtracting ? 'Extracting PDF...' : 'Extract from PDF'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pdf-upload" className="text-gray-300">Upload PDF from your files</Label>
+                      <Input
+                        id="pdf-upload"
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) => setPdfFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                        disabled={pdfExtracting}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        onClick={handleUploadPdfExtract}
+                        disabled={!pdfFile || pdfExtracting}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {pdfExtracting ? 'Extracting PDF...' : 'Extract Uploaded PDF'}
+                      </Button>
+                    </div>
+                  </div>
                   
                   {extractionInProgress && (
                     <div className="bg-blue-600/10 border border-blue-600/30 rounded-lg p-3">
@@ -2257,8 +2363,8 @@ export default function CommunityDetailNew() {
         communityId={id || ''}
       />
 
-      {/* Floating Action Button - Creator Only */}
-      {isCreator && (
+      {/* Floating Action Button - Creator Only (Hide on AI Chat) */}
+      {isCreator && activeTab !== "members" && (
         <div className="fixed bottom-6 right-6 z-[99999]">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

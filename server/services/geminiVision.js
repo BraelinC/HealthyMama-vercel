@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 class GeminiVisionService {
   constructor() {
-    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       throw new Error('GOOGLE_AI_API_KEY environment variable is required');
     }
@@ -104,6 +104,26 @@ Return only the extracted text content.
     } catch (error) {
       console.error('🚨 PDF OCR error:', error);
       return ''; // Return empty string on error
+    }
+  }
+
+  async extractRecipeFromPdf(pdfBuffer) {
+    const prompt = `You are an expert at reading recipe PDFs. Extract ONE recipe per page and merge if the same recipe spans multiple elements. Return a compact JSON object with keys: title (string), ingredients (string[]), instructions (string[]), servings (string|number optional), cookTime (string optional), prepTime (string optional). Do not include any other text.`;
+
+    try {
+      const part = {
+        inlineData: {
+          data: pdfBuffer.toString('base64'),
+          mimeType: 'application/pdf'
+        }
+      };
+
+      const result = await this.model.generateContent([prompt, part]);
+      const text = result.response.text().trim();
+      return text;
+    } catch (error) {
+      console.error('🚨 PDF direct recipe extraction error:', error);
+      return '';
     }
   }
   

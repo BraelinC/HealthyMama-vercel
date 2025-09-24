@@ -129,7 +129,10 @@ export class ChatService {
     );
   }
 
-  buildSystemPrompt(cfg: any, ctx: { facts: any[]; cookbook: any[] }) {
+  buildSystemPrompt(
+    cfg: any,
+    ctx: { facts: any[]; cookbook: any[]; profileSummary?: { dietaryRestrictions?: string[]; goals?: string[] } }
+  ) {
     let prompt = cfg.system_prompt + "\n\n";
     if (ctx.facts?.length) {
       prompt += "User facts:\n";
@@ -140,6 +143,16 @@ export class ChatService {
       prompt += "Community knowledge:\n";
       ctx.cookbook.slice(0, 5).forEach((e: any) => (prompt += `- ${e.title}: ${String(e.content).slice(0, 300)}\n`));
       prompt += "\n";
+    }
+    if (ctx.profileSummary) {
+      const dr = (ctx.profileSummary.dietaryRestrictions || []).slice(0, 6);
+      const goals = (ctx.profileSummary.goals || []).slice(0, 6);
+      if (dr.length || goals.length) {
+        prompt += "User Profile (strict):\n";
+        if (dr.length) prompt += `- Dietary Restrictions (MANDATORY): ${dr.join(", ")}\n`;
+        if (goals.length) prompt += `- Goals: ${goals.join(", ")}\n`;
+        prompt += "\n";
+      }
     }
     prompt += "If no exact match, adapt the closest base recipe to user intent, honoring mandatory dietary constraints.";
     return prompt;
@@ -264,7 +277,13 @@ export class ChatService {
       .set({ last_message_at: new Date() })
       .where(eq(chatSessions.id, sessionId));
 
-    return { sessionId, response, model: selectedModel, output_text: response };
+    return {
+      sessionId,
+      response,
+      model: selectedModel,
+      output_text: response,
+      usedContext: { profileSummary: ctx.profileSummary },
+    };
   }
 
   async previewResponse(params: { userId: string; communityId: number; message: string }) {
@@ -277,8 +296,17 @@ export class ChatService {
     if (!comm || comm.creator_id !== userId) throw new Error("Forbidden");
 
     const cfg = await this.getAIConfig(communityId);
-    const ctx = await memoryService.getContext(userId, communityId, `preview-${userId}-${communityId}`, params.message);
-    const systemPrompt = this.buildSystemPrompt(cfg, { facts: ctx.facts, cookbook: ctx.cookbook });
+    const ctx = await memoryService.getContext(
+      userId,
+      communityId,
+      `preview-${userId}-${communityId}`,
+      params.message
+    );
+    const systemPrompt = this.buildSystemPrompt(cfg, {
+      facts: ctx.facts,
+      cookbook: ctx.cookbook,
+      profileSummary: ctx.profileSummary,
+    });
     const messages = [
       { role: "system" as const, content: systemPrompt },
       { role: "user" as const, content: message },
@@ -325,7 +353,7 @@ export class ChatService {
       len: response?.length ?? 0,
       preview: typeof response === 'string' ? response.slice(0, 160) : ''
     });
-    return { response, model: selectedModel, output_text: response };
+    return { response, model: selectedModel, output_text: response, usedContext: { profileSummary: ctx.profileSummary } };
   }
 }
 

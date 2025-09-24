@@ -4,6 +4,9 @@ import {
   communityMemoryItems,
   cookbookEntries,
   chatMessages,
+  profiles,
+  mergeFamilyDietaryRestrictions,
+  type FamilyMember,
 } from "@shared/schema";
 
 type ShortMsg = { role: string; content: string; timestamp: number };
@@ -68,7 +71,69 @@ export class MemoryService {
       .orderBy(desc(chatMessages.id))
       .limit(k);
 
-    return { shortTerm, facts, cookbook, longTerm };
+    // Build profile summary: only dietary restrictions + goals
+    const [profile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.user_id, userId))
+      .limit(1);
+
+    function extractDietaryRestrictions(p: any): string[] {
+      if (!p) return [];
+      const members: FamilyMember[] = Array.isArray(p.members) ? p.members : [];
+      const merged = members.length ? mergeFamilyDietaryRestrictions(members) : [];
+      if (merged.length) return merged;
+
+      const direct = Array.isArray((p as any).dietaryRestrictions) ? (p as any).dietaryRestrictions : [];
+      const legacy = Array.isArray((p as any).dietary_restrictions) ? (p as any).dietary_restrictions : [];
+      const prefs = Array.isArray(p.preferences) ? p.preferences : [];
+      const raw = [...direct, ...legacy, ...prefs];
+
+      if (!raw.length) return [];
+
+      const keywords = [
+        "allerg", "intoleran", "free", "vegan", "vegetarian", "pescatarian", "keto", "paleo", "kosher", "halal", "diet",
+        "gluten", "dairy", "lactose", "milk", "nut", "tree nut", "peanut", "soy", "sesame", "wheat", "fodmap",
+        "shellfish", "fish", "seafood", "egg", "seed oil", "sugar-free", "low carb", "low sodium", "no ", "avoid "
+      ];
+
+      const normalized = raw
+        .map((x: any) => String(x || "").trim())
+        .filter(Boolean)
+        .filter((s: string) => {
+          const ls = s.toLowerCase();
+          return keywords.some((k) => ls.includes(k));
+        });
+
+      return Array.from(new Set(normalized));
+    }
+    const goalSet = new Set<string>();
+    const addGoal = (value: any) => {
+      const str = String(value || "").trim();
+      if (!str) return;
+      if (str.toLowerCase() === "weight-based planning") return;
+      goalSet.add(str);
+    };
+
+    if (Array.isArray((profile as any)?.goals)) {
+      (profile as any).goals.forEach((g: any) => {
+        const str = String(g || "").trim();
+        if (!str || str.includes(":")) return;
+        addGoal(str);
+      });
+    }
+
+    addGoal((profile as any)?.primary_goal);
+
+    const profileSummary = profile
+      ? {
+          profileName: (profile as any).profile_name || "",
+          dietaryRestrictions: extractDietaryRestrictions(profile),
+          goals: Array.from(goalSet).slice(0, 6),
+        }
+      : { profileName: "", dietaryRestrictions: [], goals: [] };
+
+    return { shortTerm, facts, cookbook, longTerm, profileSummary };
   }
 }
 

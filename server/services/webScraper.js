@@ -230,17 +230,39 @@ class WebScraperService {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
         '--disable-gpu',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding'
-      ] // Enhanced for Replit environment
+        '--disable-renderer-backgrounding',
+        '--proxy-bypass-list=*'
+      ]
     });
     
     const page = await browser.newPage();
-    
+
+    const navigateWithRetry = async (attempt = 1) => {
+      const maxAttempts = 3;
+      try {
+        console.log(`🧭 Navigating to ${url} (attempt ${attempt}/${maxAttempts})`);
+        try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        } catch (e1) {
+          console.log('⚠️ domcontentloaded failed; trying commit load');
+          await page.goto(url, { waitUntil: 'commit', timeout: 30000 });
+        }
+      } catch (e) {
+        const msg = String(e?.message || '').toLowerCase();
+        const retriable = msg.includes('frame was detached') || msg.includes('navigation') || msg.includes('timeout');
+        if (retriable && attempt < maxAttempts) {
+          await new Promise(r => setTimeout(r, 1500 * attempt));
+          return navigateWithRetry(attempt + 1);
+        }
+        throw e;
+      }
+    };
+
     try {
+      await navigateWithRetry();
       console.log(`🔍 Scraping recipe from: ${url}`);
       
       // Set comprehensive browser headers to avoid bot detection
@@ -261,22 +283,22 @@ class WebScraperService {
         'Cache-Control': 'max-age=0'
       });
       
+      // Ensure the page has any anchor rendered before proceeding
+      try { await page.waitForSelector('a', { timeout: 5000 }); } catch {}
+
       // Set viewport to common resolution
       await page.setViewport({ width: 1366, height: 768 });
       
-      await page.goto(url, { 
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
+      // Confirm we still have a live frame (guard against SPA redirects)
+      try { await page.waitForFunction('document.readyState === "complete" || document.readyState === "interactive"', { timeout: 8000 }); } catch {}
       
       console.log('🔒 Stealth mode active, enhanced headers set, waiting for content...');
       
-      // METHOD 1: Fast JSON-LD Extraction (5-second wait)
+      // METHOD 1: Fast JSON-LD Extraction (wait for common containers if present)
       console.log('🚀 Method 1: Fast JSON-LD extraction');
-      try {
-        await page.waitForSelector('body', { timeout: 5000 });
-      } catch (e) {
-        // Continue if no specific selector found
+      const candidates = ['.post-item', '.entry-item', '.wp-block-latest-posts__post', 'article'];
+      for (const sel of candidates) {
+        try { await page.waitForSelector(sel, { timeout: 2500 }); break; } catch {}
       }
       
       // Try JSON-LD extraction first

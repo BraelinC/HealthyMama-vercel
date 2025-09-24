@@ -173,7 +173,7 @@ export default function WeightBasedProfile() {
     }
   }, [profile]);
 
-  const handleSubmit = () => {
+const handleSubmit = () => {
     if (!profileName?.trim()) {
       toast({
         title: "Error",
@@ -183,12 +183,13 @@ export default function WeightBasedProfile() {
       return;
     }
 
-    const profileData: Partial<SimplifiedUserProfile> = {
+    const profileData: Partial<SimplifiedUserProfile> & { primaryGoal?: string } = {
       profileName: profileName.trim(),
       familySize,
       goalWeights,
       dietaryRestrictions,
       culturalBackground,
+      primaryGoal: (profile as any)?.primaryGoal || 'Gain Muscle',
       // Include questionnaire data if it exists
       ...(Object.keys(questionnaireAnswers).length > 0 && {
         questionnaire_answers: questionnaireAnswers,

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, X, Users, Target, ChefHat, Save, UserPlus, Edit3, Heart, Home, Shuffle, Baby, User, Crown, Globe, LogOut, CheckCircle, DollarSign } from 'lucide-react';
+import { Plus, X, Users, Target, ChefHat, Save, UserPlus, Edit3, Heart, Home, Shuffle, Baby, User, Crown, Globe, LogOut, CheckCircle, DollarSign, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Profile, FamilyMember } from '@shared/schema';
 import CulturalCuisineDropdown from '@/components/CulturalCuisineDropdown';
@@ -92,6 +92,51 @@ const commonDietaryRestrictions = [
   'Sesame'
 ];
 
+const additionalDietaryOptions = [
+  'None',
+  'Vegetarian',
+  'Vegan',
+  'Keto',
+  'Paleo',
+  'Gluten-Free',
+  'Dairy-Free',
+  'Low Carb',
+  'Low Sodium',
+  'Sugar-Free',
+  'No Seed Oils',
+  'Kosher',
+  'Halal',
+  'FODMAP'
+];
+
+const restrictionKeywords = [
+  'allerg',
+  'intoleran',
+  'free',
+  'vegan',
+  'vegetarian',
+  'keto',
+  'paleo',
+  'kosher',
+  'halal',
+  'diet',
+  'gluten',
+  'dairy',
+  'lactose',
+  'nut',
+  'peanut',
+  'soy',
+  'fodmap',
+  'shellfish',
+  'egg',
+  'seed oil',
+  'sugar-free',
+  'low carb',
+  'low sodium',
+  'no ',
+  'avoid '
+];
+
 const personalGoals = [
   'Lose Weight',
   'Gain Muscle',
@@ -102,6 +147,14 @@ const personalGoals = [
   'Increase Protein',
   'Build Healthy Habits'
 ];
+
+const defaultGoalWeights = {
+  cost: 0.5,
+  health: 0.5,
+  cultural: 0.5,
+  variety: 0.5,
+  time: 0.5,
+};
 
 export default function Profile() {
   const { user } = useAuth();
@@ -124,6 +177,7 @@ export default function Profile() {
   const [individualGoals, setIndividualGoals] = useState<string[]>([]);
   const [individualDietaryRestrictions, setIndividualDietaryRestrictions] = useState<string[]>([]);
   const [culturalBackground, setCulturalBackground] = useState<string[]>([]);
+  const [customRestriction, setCustomRestriction] = useState('');
 
   // Extract questionnaire weights from profile goals (handle both object and array formats)
   const [questionnaireWeights, setQuestionnaireWeights] = useState<any>(null);
@@ -142,6 +196,101 @@ export default function Profile() {
     role: '',
     avatarStyle: 'fun-emoji'
   });
+
+  const dedupeList = (arr: string[] = []) => Array.from(new Set(arr.map((v) => String(v || '').trim()).filter(Boolean)));
+
+  const computeDietaryRestrictionsForWeightProfile = (profilePayload: any) => {
+    const restrictions = new Set<string>();
+
+    const type = (profilePayload?.profile_type as 'individual' | 'family') || profileType;
+    if (type === 'individual') {
+      individualDietaryRestrictions.forEach((r) => {
+        const val = String(r || '').trim();
+        if (val) restrictions.add(val);
+      });
+    } else {
+      const sourceMembers = Array.isArray(profilePayload?.members) ? profilePayload.members : members;
+      sourceMembers.forEach((member: any) => {
+        (member?.dietaryRestrictions || []).forEach((r: string) => {
+          const val = String(r || '').trim();
+          if (val) restrictions.add(val);
+        });
+      });
+    }
+
+    if (!restrictions.size && Array.isArray(profilePayload?.preferences)) {
+      profilePayload.preferences.forEach((pref: any) => {
+        const val = String(pref || '').trim();
+        if (!val) return;
+        const lower = val.toLowerCase();
+        if (restrictionKeywords.some((kw) => lower.includes(kw))) {
+          restrictions.add(val);
+        }
+      });
+    }
+
+    return dedupeList(Array.from(restrictions));
+  };
+
+  const parseGoalWeights = (rawGoals: any): Record<string, number> | null => {
+    if (!rawGoals) return null;
+    const weights: Record<string, number> = {};
+    let found = false;
+    if (Array.isArray(rawGoals)) {
+      rawGoals.forEach((entry: any) => {
+        if (typeof entry === 'string' && entry.includes(':')) {
+          const [key, value] = entry.split(':');
+          const weight = parseFloat(value);
+          if (key && !Number.isNaN(weight)) {
+            weights[key] = weight;
+            found = true;
+          }
+        }
+      });
+    } else if (typeof rawGoals === 'object') {
+      Object.entries(rawGoals).forEach(([key, value]) => {
+        if (typeof value === 'number') {
+          weights[key] = value;
+          found = true;
+        }
+      });
+    }
+    return found ? weights : null;
+  };
+
+  const syncWeightBasedProfile = async (profilePayload: any) => {
+    if (!profilePayload) return;
+    try {
+      const restrictions = computeDietaryRestrictionsForWeightProfile(profilePayload);
+      const existingWB = (weightBasedProfile || null) as any;
+      let goalWeights = existingWB?.goalWeights || parseGoalWeights(profilePayload?.goals) || parseGoalWeights((profile as any)?.goals) || defaultGoalWeights;
+
+    const body: any = {
+      profileName: profilePayload.profile_name || existingWB?.profileName || profileName || 'My Profile',
+      familySize: profilePayload.family_size || existingWB?.familySize || familySize || 1,
+      goalWeights,
+      dietaryRestrictions: restrictions,
+      culturalBackground: profilePayload.cultural_background || existingWB?.culturalBackground || culturalBackground || [],
+      profileType: profilePayload.profile_type || existingWB?.profileType || profileType,
+      primaryGoal: profilePayload.primary_goal || existingWB?.primaryGoal || primaryGoal || 'Gain Muscle',
+    };
+
+      if (existingWB?.questionnaire_answers) body.questionnaire_answers = existingWB.questionnaire_answers;
+      if (existingWB?.questionnaire_selections) body.questionnaire_selections = existingWB.questionnaire_selections;
+
+      await apiRequest('/api/profile/weight-based', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['/api/profile/weight-based'] });
+      queryClient.refetchQueries({ queryKey: ['/api/profile/weight-based'] });
+      queryClient.invalidateQueries({ queryKey: ['weight-based-profile'] });
+      queryClient.refetchQueries({ queryKey: ['weight-based-profile'] });
+    } catch (err) {
+      console.warn('⚠️ Failed to sync weight-based profile', err);
+    }
+  };
 
   const { data: profile, isLoading, error } = useQuery({
     queryKey: ['/api/profile'],
@@ -193,17 +342,23 @@ export default function Profile() {
         throw new Error(error.message || 'Failed to create profile');
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, variables) => {
       console.log('=== CREATE PROFILE SUCCESS ===');
       console.log('Response data:', data);
       setSaveStatus('saved');
       toast({
-        title: "Success",  
+        title: "Success",
         description: "Profile created successfully!"
       });
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
       queryClient.refetchQueries({ queryKey: ['/api/profile'] });
+      await syncWeightBasedProfile(variables || data);
+
+      // Sync with UltraThink if individual profile
+      if (profileType === 'individual') {
+        await syncProfileWithUltraThink(variables || data);
+      }
 
       // Reset to idle after showing saved state
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -246,15 +401,21 @@ export default function Profile() {
         throw new Error(error.message || 'Failed to update profile');
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
       setSaveStatus('saved');
       toast({
-        title: "Success", 
+        title: "Success",
         description: "Profile updated successfully!"
       });
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
       queryClient.refetchQueries({ queryKey: ['/api/profile'] });
+      await syncWeightBasedProfile(variables || _data);
+
+      // Sync with UltraThink if individual profile
+      if (profileType === 'individual') {
+        await syncProfileWithUltraThink(variables || _data);
+      }
 
       // Reset to idle after showing saved state
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -580,6 +741,59 @@ export default function Profile() {
     setIndividualGoals(individualGoals.filter(g => g !== goal));
   };
 
+  const addCustomRestriction = () => {
+    if (customRestriction.trim() && !individualDietaryRestrictions.includes(customRestriction.trim())) {
+      setIndividualDietaryRestrictions([...individualDietaryRestrictions, customRestriction.trim()]);
+      setCustomRestriction('');
+    }
+  };
+
+  // UltraThink Memory Sync
+  const syncProfileWithUltraThink = async (rawProfileData?: any) => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    const payload = rawProfileData || {
+      profile_name: profileName || 'User Profile',
+      profile_type: profileType,
+      primary_goal: primaryGoal,
+      family_size: profileType === 'individual' ? 1 : familySize,
+      members,
+      cultural_background: culturalBackground,
+      preferences: profileType === 'individual'
+        ? [...individualPreferences, ...individualDietaryRestrictions]
+        : undefined,
+      goals: profileType === 'individual' ? individualGoals : undefined,
+    };
+
+    try {
+      const response = await fetch('/api/mem0/profile/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          communityId: 1,
+          profile: payload,
+          syncType: 'profile:update'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Profile synced with UltraThink:', result);
+
+        toast({
+          title: "UltraThink Updated",
+          description: "Your profile has been synced with UltraThink memory system.",
+        });
+      }
+    } catch (error) {
+      console.error('❌ UltraThink sync error:', error);
+    }
+  };
+
   // Smart cultural preference save function
   const handleSaveCulturalPreferences = async (overrideCuisines?: string[]) => {
     if (!profile) return;
@@ -610,7 +824,9 @@ export default function Profile() {
       // Wait a moment before invalidating to ensure database update is complete
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
-      queryClient.refetchQueries({ queryKey: ['/api/profile'] });
+        queryClient.refetchQueries({ queryKey: ['/api/profile'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/profile/weight-based'] });
+        queryClient.refetchQueries({ queryKey: ['/api/profile/weight-based'] });
       }, 500);
 
       console.log('✅ Cultural preferences saved successfully!');
@@ -1030,46 +1246,98 @@ export default function Profile() {
 
 
                 {profileType === 'individual' && isEditing && (
-                  <div className="space-y-4 pt-4 border-t border-gray-200">
+                  <div className="space-y-6 pt-4 border-t border-gray-200">
                     <div>
                       <Label className="flex items-center gap-2">
                         <span className="text-red-500">*</span>
                         Dietary Restrictions
+                        <span className="text-xs text-gray-500">(100% compliance - these will be strictly followed)</span>
                       </Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {commonDietaryRestrictions.map(restriction => (
-                          <Button
-                            key={restriction}
-                            onClick={() => {
-                              if (!individualDietaryRestrictions.includes(restriction)) {
-                                setIndividualDietaryRestrictions([...individualDietaryRestrictions, restriction]);
-                              }
-                            }}
-                            variant={individualDietaryRestrictions.includes(restriction) ? "destructive" : "outline"}
-                            size="sm"
-                            className="text-xs"
-                          >
-                            {restriction}
-                          </Button>
-                        ))}
-                      </div>
-                      {individualDietaryRestrictions.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {individualDietaryRestrictions.map((restriction: string) => (
-                            <Badge key={restriction} variant="destructive" className="flex items-center gap-1">
+
+                      {/* Common Allergies */}
+                      <div className="mt-3">
+                        <div className="text-sm font-medium text-gray-700 mb-2">Common Allergies:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {commonDietaryRestrictions.map(restriction => (
+                            <Button
+                              key={restriction}
+                              onClick={() => {
+                                if (!individualDietaryRestrictions.includes(restriction)) {
+                                  setIndividualDietaryRestrictions([...individualDietaryRestrictions, restriction]);
+                                }
+                              }}
+                              variant={individualDietaryRestrictions.includes(restriction) ? "destructive" : "outline"}
+                              size="sm"
+                              className="text-xs"
+                            >
                               {restriction}
-                              <button
-                                onClick={() => setIndividualDietaryRestrictions(
-                                  individualDietaryRestrictions.filter(r => r !== restriction)
-                                )}
-                                className="ml-1 text-white hover:text-gray-200"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
+                            </Button>
                           ))}
                         </div>
+                      </div>
+
+                      {/* Diet Types */}
+                      <div className="mt-4">
+                        <div className="text-sm font-medium text-gray-700 mb-2">Diet Types & Preferences:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {additionalDietaryOptions.map(restriction => (
+                            <Button
+                              key={restriction}
+                              onClick={() => {
+                                if (!individualDietaryRestrictions.includes(restriction)) {
+                                  setIndividualDietaryRestrictions([...individualDietaryRestrictions, restriction]);
+                                }
+                              }}
+                              variant={individualDietaryRestrictions.includes(restriction) ? "destructive" : "outline"}
+                              size="sm"
+                              className="text-xs"
+                            >
+                              {restriction}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Restriction Input */}
+                      <div className="mt-4">
+                        <div className="flex gap-2">
+                          <Input
+                            value={customRestriction}
+                            onChange={(e) => setCustomRestriction(e.target.value)}
+                            placeholder="Add custom dietary restriction..."
+                            className="flex-1"
+                            onKeyPress={(e) => e.key === 'Enter' && addCustomRestriction()}
+                          />
+                          <Button onClick={addCustomRestriction} size="sm">
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Selected Restrictions Display */}
+                      {individualDietaryRestrictions.length > 0 && (
+                        <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                          <div className="text-sm font-medium text-red-700 mb-2">
+                            Your Dietary Restrictions ({individualDietaryRestrictions.length}):
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {individualDietaryRestrictions.map((restriction: string) => (
+                              <Badge key={restriction} variant="destructive" className="flex items-center gap-1">
+                                {restriction}
+                                <button
+                                  onClick={() => setIndividualDietaryRestrictions(
+                                    individualDietaryRestrictions.filter(r => r !== restriction)
+                                  )}
+                                  className="ml-1 text-white hover:text-gray-200"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       )}
+
                     </div>
                   </div>
                 )}

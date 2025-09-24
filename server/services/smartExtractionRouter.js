@@ -26,12 +26,17 @@ class SmartExtractionRouter {
       console.log(`📊 [ROUTER DEBUG] URL Analysis: ${urlAnalysis.type} → ${urlAnalysis.action}`);
       console.log(`💡 [ROUTER DEBUG] Reasoning: ${urlAnalysis.reason}`);
 
-      // Step 2: Route based on URL type
+      // Step 2: Route based on URL type (force discovery for known category paths)
       switch (urlAnalysis.action) {
         case 'discovery':
           return await this.handleDiscoveryRoute(url, urlAnalysis, options);
         
         case 'extract':
+          // If this is a known category path like /recipes/popular, prefer discovery
+          if (/\/recipes\/popular\/?$/i.test(url)) {
+            console.log('🔁 Overriding to discovery for popular listing');
+            return await this.handleDiscoveryRoute(url, { type: 'category', action: 'discovery', reason: 'popular listing' }, options);
+          }
           return await this.handleExtractionRoute(url, urlAnalysis, options);
         
         default:
@@ -84,7 +89,7 @@ class SmartExtractionRouter {
       const extractionErrors = [];
       
       // Process in batches to avoid overwhelming the system
-      const batchSize = 5; // 5 concurrent extractions at a time
+      const batchSize = 4; // reduce concurrency for heavy JS sites
       const batches = [];
       
       for (let i = 0; i < urlsToExtract.length; i += batchSize) {
@@ -132,7 +137,13 @@ class SmartExtractionRouter {
         });
         
         // Wait for all extractions in this batch to complete
-        const batchResults = await Promise.all(batchPromises);
+        // Enforce per-page timeout to avoid hanging batches
+        const withTimeout = (p) => Promise.race([
+          p,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('per-page timeout exceeded')), 45000)),
+        ]);
+
+        const batchResults = await Promise.all(batchPromises.map(withTimeout).map(pr => pr.catch(err => ({ success: false, error: err.message }))));
         
         // Sort results into successes and errors, filtering out invalid recipes
         batchResults.forEach(result => {
@@ -168,7 +179,7 @@ class SmartExtractionRouter {
         
         // Small delay between batches to be respectful to the server
         if (batchIndex < batches.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1200));
         }
       }
 

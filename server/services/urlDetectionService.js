@@ -53,7 +53,8 @@ class UrlDetectionService {
       /\/tags\//i,                           // /tags/easy
       /\/collection\//i,                     // /collection/holiday
       /\/search\//i,                         // /search/results
-      /\/browse\//i                          // /browse/recent
+      /\/browse\//i,                         // /browse/recent
+      /\/recipes\/popular\/?$/i             // common popular listing
     ];
   }
 

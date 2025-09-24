@@ -44,6 +44,7 @@ import {
 import { db } from "./db";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { chatService } from "./chatService";
+import simplifiedMem0Routes from "./routes/simplifiedMem0Routes";
 
 // YouTube API utilities
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
@@ -133,6 +134,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", registerUser);
   app.post("/api/auth/login", loginUser);
   app.get("/api/auth/user", authenticateToken, getCurrentUser);
+
+  // ===== MEM0 ULTRATHINK ROUTES =====
+  // Using simplified implementation without mem0.ai dependencies
+  app.use("/api/mem0", authenticateToken, simplifiedMem0Routes);
 
   // Toggle creator status endpoint (for testing)
   app.post("/api/user/toggle-creator", authenticateToken, async (req: any, res) => {
@@ -4289,13 +4294,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📊 Successfully parsed ${parsedWeightsCount} weights from ${existingProfile.goals?.length || 0} goals`);
         
         // Convert existing profile to weight-based format
-        const weightBasedProfile = {
-          profileName: existingProfile.profile_name || 'My Profile',
-          familySize: existingProfile.family_size || 2,
-          goalWeights: storedGoalWeights,
-          dietaryRestrictions: existingProfile.preferences || [],
-          culturalBackground: existingProfile.cultural_background || []
-        };
+      const weightBasedProfile = {
+        profileName: existingProfile.profile_name || 'My Profile',
+        familySize: existingProfile.family_size || 2,
+        goalWeights: storedGoalWeights,
+        dietaryRestrictions: existingProfile.preferences || [],
+        culturalBackground: existingProfile.cultural_background || [],
+        primaryGoal: existingProfile.primary_goal || null,
+      };
         
         res.json(weightBasedProfile);
       } else {
@@ -4314,7 +4320,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const { profileName, familySize, goalWeights, dietaryRestrictions, culturalBackground, profileType, questionnaire_answers, questionnaire_selections } = req.body;
+      const {
+        profileName,
+        familySize,
+        goalWeights,
+        dietaryRestrictions,
+        culturalBackground,
+        profileType,
+        primaryGoal,
+        questionnaire_answers,
+        questionnaire_selections,
+      } = req.body;
 
       console.log('💾 Creating weight-based profile with data:', {
         profileName,
@@ -4334,7 +4350,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profileData = {
         user_id: userId,
         profile_name: profileName,
-        primary_goal: 'Weight-Based Planning',
+        primary_goal:
+          typeof primaryGoal === 'string' && primaryGoal.trim() && primaryGoal.trim().toLowerCase() !== 'weight-based planning'
+            ? primaryGoal.trim()
+            : 'Gain Muscle',
         family_size: familySize,
         members: [], // Empty for weight-based approach
         profile_type: (profileType || 'individual') as 'individual' | 'family',
@@ -4358,7 +4377,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         familySize: profile.family_size,
         goalWeights,
         dietaryRestrictions: profile.preferences,
-        culturalBackground: profile.cultural_background
+        culturalBackground: profile.cultural_background,
+        primaryGoal: profile.primary_goal,
       };
 
       console.log('💾 Returning creation response to client:', response);
@@ -4383,7 +4403,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const { profileName, familySize, goalWeights, dietaryRestrictions, culturalBackground, profileType, questionnaire_answers, questionnaire_selections } = req.body;
+      const {
+        profileName,
+        familySize,
+        goalWeights,
+        dietaryRestrictions,
+        culturalBackground,
+        profileType,
+        primaryGoal,
+        questionnaire_answers,
+        questionnaire_selections,
+      } = req.body;
 
       console.log('💾 Saving weight-based profile with data:', {
         profileName,
@@ -4409,7 +4439,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing profile
         const profileData = {
           profile_name: profileName || existingProfile.profile_name || 'My Profile',
-          primary_goal: 'Weight-Based Planning',
+          primary_goal:
+            typeof primaryGoal === 'string' && primaryGoal.trim() && primaryGoal.trim().toLowerCase() !== 'weight-based planning'
+              ? primaryGoal.trim()
+              : existingProfile.primary_goal || 'Gain Muscle',
           family_size: familySize || existingProfile.family_size || 2,
           members: existingProfile.members || [],
           profile_type: (profileType || existingProfile.profile_type || 'individual') as 'individual' | 'family',
@@ -4425,7 +4458,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const profileData = {
           user_id: userId,
           profile_name: profileName || 'My Profile',
-          primary_goal: 'Weight-Based Planning',
+          primary_goal:
+            typeof primaryGoal === 'string' && primaryGoal.trim() && primaryGoal.trim().toLowerCase() !== 'weight-based planning'
+              ? primaryGoal.trim()
+              : 'Gain Muscle',
           family_size: familySize || 2,
           members: [],
           profile_type: (profileType || 'individual') as 'individual' | 'family',
@@ -4449,7 +4485,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         familySize: profile.family_size,
         goalWeights,
         dietaryRestrictions: profile.preferences,
-        culturalBackground: profile.cultural_background
+        culturalBackground: profile.cultural_background,
+        primaryGoal: profile.primary_goal,
       };
 
       console.log('💾 Returning response to client:', response);
@@ -7036,6 +7073,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to extract meal plan data',
         details: error.message 
       });
+    }
+  });
+
+  // Extract recipe from PDF (URL or base64)
+  app.post('/api/extract-recipe-from-pdf', authenticateToken, async (req: any, res) => {
+    try {
+      const { pdfUrl, pdfBase64 } = req.body || {};
+      if (!pdfUrl && !pdfBase64) {
+        return res.status(400).json({ success: false, error: 'Provide pdfUrl or pdfBase64' });
+      }
+
+      let pdfBuffer: Buffer;
+      if (pdfBase64) {
+        pdfBuffer = Buffer.from(pdfBase64, 'base64');
+      } else {
+        const resp = await fetch(pdfUrl);
+        if (!resp.ok) return res.status(400).json({ success: false, error: 'Failed to fetch PDF URL' });
+        const arr = await resp.arrayBuffer();
+        pdfBuffer = Buffer.from(arr);
+      }
+
+      const { default: PdfRecipeExtractor } = await import('./services/pdfRecipeExtractor.js');
+      const extractor = new PdfRecipeExtractor();
+      const result = await extractor.extractFromPdfBuffer(pdfBuffer);
+
+      if (!result.success) return res.status(500).json(result);
+      return res.json({ success: true, recipe: result.recipe, textLength: result.textLength });
+    } catch (err: any) {
+      console.error('PDF extraction error:', err);
+      res.status(500).json({ success: false, error: err.message || 'Failed to extract recipe from PDF' });
     }
   });
 

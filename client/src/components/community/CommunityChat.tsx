@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Send, MessagesSquare, Plus, TestTube2 } from "lucide-react";
 import CreatorAISettings from "@/components/community/CreatorAISettings";
 import CookbookUploader from "@/components/community/CookbookUploader";
+import UserContextCard from "@/components/community/UserContextCard";
 
 interface CommunityChatProps {
   communityId: number;
@@ -29,6 +30,8 @@ export default function CommunityChat({ communityId }: CommunityChatProps) {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [showContext, setShowContext] = useState(false);
+  const [lastUsedContext, setLastUsedContext] = useState<any>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   const authHeaders = useMemo(() => {
@@ -133,6 +136,7 @@ export default function CommunityChat({ communityId }: CommunityChatProps) {
       // Debug: Inspect server response shape
       // eslint-disable-next-line no-console
       console.log("[AI RESPONSE DEBUG]", data);
+      if (data && data.usedContext) setLastUsedContext(data.usedContext);
       const contentCandidate =
         (typeof data.response === "string" && data.response.trim()) ||
         (typeof data.output_text === "string" && data.output_text.trim()) ||
@@ -160,6 +164,14 @@ export default function CommunityChat({ communityId }: CommunityChatProps) {
           <span className="font-medium text-gray-100">AI Chat</span>
         </div>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1 text-sm text-gray-200">
+            <input
+              type="checkbox"
+              checked={showContext}
+              onChange={(e) => setShowContext(e.target.checked)}
+            />
+            Show Context
+          </label>
           <label className="flex items-center gap-1 text-sm text-gray-200">
             <input
               type="checkbox"
@@ -198,10 +210,15 @@ export default function CommunityChat({ communityId }: CommunityChatProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-900">
-        {previewMode && (
+        {(showContext || previewMode) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CreatorAISettings communityId={communityId} />
-            <CookbookUploader communityId={communityId} />
+            {showContext && <UserContextCard usedContext={lastUsedContext} />}
+            {previewMode && (
+              <>
+                <CreatorAISettings communityId={communityId} />
+                <CookbookUploader communityId={communityId} />
+              </>
+            )}
           </div>
         )}
         {loadingSessions && (
@@ -247,5 +264,3 @@ export default function CommunityChat({ communityId }: CommunityChatProps) {
     </div>
   );
 }
-
-

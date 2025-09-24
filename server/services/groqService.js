@@ -77,6 +77,21 @@ JSON Response:`;
       throw new Error(`Failed to extract recipe with AI: ${error.message}`);
     }
   }
+
+  async extractStructuredRecipeFromImage(base64Image, systemPrompt = '') {
+    try {
+      // Simple image-to-text bridge: hint the model about image content
+      const hint = `${systemPrompt}\nThe following is a base64-encoded PNG/JPEG screenshot of a PDF page that may contain a recipe. Extract and return ONLY JSON: {"title":string, "ingredients":string[], "instructions":string[]}. If no recipe, return {"title":"","ingredients":[],"instructions":[]}.\nIMAGE_BASE64_START\n${base64Image.slice(0, 2000)}\nIMAGE_BASE64_END`;
+      const result = await this.extractStructuredRecipe(hint, null);
+      // Ensure minimal shape
+      if (result && typeof result === 'object' && Array.isArray(result.ingredients) && Array.isArray(result.instructions)) {
+        return result;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
   
   async retryExtraction(cleanedText, imageUrl, previousResponse) {
     console.log(`🔄 Retrying extraction with correction prompt`);

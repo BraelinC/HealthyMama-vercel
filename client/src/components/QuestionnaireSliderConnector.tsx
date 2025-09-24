@@ -21,6 +21,7 @@ interface QuestionnaireResult {
 
 interface ProfileData {
   id: number;
+  primaryGoal?: string | null;
   goalWeights: {
     cost: number;
     health: number;
@@ -64,7 +65,7 @@ export default function QuestionnaireSliderConnector() {
 
   // Fetch current profile data
   const { data: profileData, isLoading } = useQuery<ProfileData>({
-    queryKey: ['weight-based-profile'],
+    queryKey: ['/api/profile/weight-based'],
     queryFn: async () => {
       const response = await fetch('/api/profile/weight-based');
       if (!response.ok) throw new Error('Failed to fetch profile');
@@ -82,20 +83,41 @@ export default function QuestionnaireSliderConnector() {
 
   // Save weights mutation
   const saveWeightsMutation = useMutation({
-    mutationFn: async (weights: typeof currentWeights) => {
-      console.log('💾 Saving weights to database:', weights);
+    mutationFn: async ({ weights, primaryGoal }: { weights: typeof currentWeights; primaryGoal?: string | null }) => {
+      console.log('dY'_ Saving weights to database:', weights);
       const response = await fetch('/api/profile/weight-based', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalWeights: weights })
+        body: JSON.stringify({ goalWeights: weights, primaryGoal })
       });
+      if (!response.ok) throw new Error('Failed to save weights');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('�o. Weights saved successfully:', data);
+      setHasUnsavedChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/profile/weight-based'] });
+      toast({
+        title: "Success",
+        description: "Goal weights saved successfully!"
+      });
+    },
+    onError: (error) => {
+      console.error('�?O Failed to save weights:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save goal weights",
+        variant: "destructive"
+      });
+    }
+  });
       if (!response.ok) throw new Error('Failed to save weights');
       return response.json();
     },
     onSuccess: (data) => {
       console.log('✅ Weights saved successfully:', data);
       setHasUnsavedChanges(false);
-      queryClient.invalidateQueries({ queryKey: ['weight-based-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/profile/weight-based'] });
       toast({
         title: "Success",
         description: "Goal weights saved successfully!"
@@ -120,7 +142,7 @@ export default function QuestionnaireSliderConnector() {
     setShowQuestionnaire(false);
     
     // Auto-save the questionnaire results
-    saveWeightsMutation.mutate(result.weights);
+    saveWeightsMutation.mutate({ weights: result.weights, primaryGoal: result.primaryGoal });
     
     toast({
       title: "Questionnaire Complete",
@@ -151,7 +173,7 @@ export default function QuestionnaireSliderConnector() {
 
   // Save current weights
   const handleSave = () => {
-    saveWeightsMutation.mutate(currentWeights);
+    saveWeightsMutation.mutate({ weights: currentWeights, primaryGoal: profileData?.primaryGoal });
   };
 
   if (isLoading) {
