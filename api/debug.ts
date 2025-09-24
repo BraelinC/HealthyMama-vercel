@@ -1,3 +1,5 @@
+export const config = { runtime: "nodejs18.x" };
+
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {

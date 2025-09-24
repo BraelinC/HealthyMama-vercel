@@ -1,3 +1,5 @@
+export const config = { runtime: "nodejs18.x" };
+
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { generateRecipeWithGrok } from '../../server/grok';
