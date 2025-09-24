@@ -1,5 +1,3 @@
-export const config = { runtime: "nodejs" };
-
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { storage } from '../../server/storage';
