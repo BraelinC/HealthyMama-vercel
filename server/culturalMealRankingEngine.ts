@@ -3,7 +3,8 @@
  * Uses cached cultural meal data with intelligent weight-based scoring and Llama 3 8B ranking
  */
 
-import { getCachedCulturalCuisine, CulturalCuisineData } from './cultureCacheManager.js';
+import { getCachedCulturalCuisine } from './cultureCacheManager.js';
+type CulturalCuisineData = any;
 
 export interface StructuredMeal {
   id: string;

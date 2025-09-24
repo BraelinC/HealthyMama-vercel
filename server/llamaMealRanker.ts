@@ -160,7 +160,7 @@ Score ALL ${maxMeals} meals. Numbers only, NO text in meal objects.`;
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorBody}`);
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     const content = data.choices[0].message.content;
     
     // Parse JSON response

@@ -141,7 +141,7 @@ export async function getCulturalCuisineData(userId: string | number, cultureTag
           cache_metrics.hits++;
           
           // Convert database format to expected format
-          const cachedResult = {
+          const cachedResult: CulturalCuisineData = {
             meals: cachedEntry.meals_data as any,
             summary: cachedEntry.summary_data as any,
             cached_at: new Date(cachedEntry.created_at),

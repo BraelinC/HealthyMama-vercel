@@ -28,6 +28,8 @@ export interface AlternativeSuggestion {
   cookTime: number;
   culturalNotes: string;
   dietaryCompliance: string[];
+  // Score indicating how culturally authentic this adaptation is (0-1)
+  culturalAuthenticity?: number;
 }
 
 export interface IngredientSubstitution {
@@ -145,7 +147,7 @@ export const CONFLICT_PATTERNS: ConflictPattern[] = [
 ];
 
 // Cultural cuisine mappings for better substitution context
-const CULTURAL_SUBSTITUTION_CONTEXT = {
+const CULTURAL_SUBSTITUTION_CONTEXT: Record<string, Record<string, { substitute: string; preparation: string; culturalNote: string }>> = {
   'Chinese': {
     'beef': { substitute: 'tofu', preparation: 'marinated in soy sauce and cornstarch', culturalNote: 'Tofu is traditional in Chinese cuisine' },
     'chicken': { substitute: 'mushrooms', preparation: 'shiitake or king oyster mushrooms', culturalNote: 'Mushrooms are prized in Chinese cooking' },
@@ -293,7 +295,7 @@ async function generateAlternatives(
   
   // Sort by cultural authenticity and practical feasibility
   return alternatives
-    .sort((a, b) => b.culturalAuthenticity - a.culturalAuthenticity)
+    .sort((a, b) => (b.culturalAuthenticity ?? 0) - (a.culturalAuthenticity ?? 0))
     .slice(0, 5); // Return top 5 alternatives
 }
 
@@ -565,7 +567,7 @@ function generateEnhancedAlternatives(
 
   // Sort by cultural authenticity and relevance
   return alternatives
-    .sort((a, b) => b.culturalAuthenticity - a.culturalAuthenticity)
+    .sort((a, b) => (b.culturalAuthenticity ?? 0) - (a.culturalAuthenticity ?? 0))
     .slice(0, 5); // Top 5 alternatives
 }
 
