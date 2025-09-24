@@ -8,24 +8,8 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
   
-  // In development (localhost or Replit), use relative URLs which will be proxied
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    // For local development or Replit development, use relative URLs (proxied by Vite)
-    if (hostname === 'localhost' || 
-        hostname.includes('.replit.dev') || 
-        hostname.includes('.repl.co') ||
-        hostname.includes('.replit.app')) {
-      return ''; // Empty string means use relative URLs
-    }
-    
-    // For Whop or other external deployments, use the full Replit backend URL
-    return 'https://c3104879-9615-439c-96a3-7f96d3037ce8-00-3c226nw72trsq.spock.replit.dev';
-  }
-  
-  // Fallback for SSR or other environments
-  return 'https://c3104879-9615-439c-96a3-7f96d3037ce8-00-3c226nw72trsq.spock.replit.dev';
+  // Always use same-origin API (works for localhost and Vercel)
+  return '';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

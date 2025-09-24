@@ -22,7 +22,7 @@ export class GroqIngredientParser {
   private client: Groq | null = null;
   
   constructor() {
-    // Use GROQ_API_KEY from Replit Secrets
+    // Use GROQ_API_KEY from environment variables (Vercel)
     const groqApiKey = process.env.GROQ_API_KEY;
     
     if (groqApiKey) {

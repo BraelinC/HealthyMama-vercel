@@ -37,8 +37,7 @@ const corsOptions = {
       /^https:\/\/.*\.apps\.whop\.com$/,  // Any Whop app subdomain
       /^https:\/\/whop\.com$/,             // Main Whop domain
       /^http:\/\/localhost:\d+$/,          // Local development
-      /^https:\/\/.*\.replit\.dev$/,       // Replit domains
-      /^https:\/\/.*\.repl\.co$/           // Replit alternative domains
+      /^https:\/\/.*\.vercel\.app$/        // Vercel preview/production domains
     ];
     
     // Check if the origin matches any allowed pattern
@@ -61,7 +60,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Replit Auth enabled
+// Auth via JWT/Google OAuth (Vercel) enabled
 // Increase payload size limit for image uploads (10MB)
 // Skip JSON parsing for Stripe webhook (it needs raw body)
 app.use((req, res, next) => {
@@ -150,7 +149,7 @@ app.use((req, res, next) => {
 
   // Use PORT env variable or default to 5000
   // this serves both the API and the client.
-  // In Replit, port 5000 is the only port that is not firewalled.
+
   const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   
   server.on('error', (error: any) => {

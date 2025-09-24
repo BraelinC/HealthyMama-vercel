@@ -8,10 +8,10 @@ import type { User } from "@shared/schema";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// Dynamic callback URL that works with Replit's changing domains
-const GOOGLE_CALLBACK_URL = process.env.REPLIT_DEV_DOMAIN 
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/google/callback`
-  : "https://workspace-braelincarranz1.replit.app/api/auth/google/callback";
+// Dynamic callback URL that works with Vercel preview/production
+const GOOGLE_CALLBACK_URL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}/api/auth/google/callback`
+  : process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback";
 
 // Check if Google OAuth is configured
 const isGoogleOAuthConfigured = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET;

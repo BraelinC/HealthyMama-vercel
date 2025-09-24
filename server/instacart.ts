@@ -57,9 +57,11 @@ export async function createInstacartRecipePage(recipeData: any) {
     instructions: recipeData.instructions,
     ingredients: await formatIngredientsForInstacart(recipeData.ingredients),
     landing_page_configuration: {
-      partner_linkback_url: process.env.REPLIT_DOMAINS ? 
-        process.env.REPLIT_DOMAINS.split(',')[0] : 
-        "https://example.com",
+      partner_linkback_url: process.env.VERCEL_PROJECT_PRODUCTION_URL 
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` 
+        : process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : "https://example.com",
       enable_pantry_items: true
     }
   };
