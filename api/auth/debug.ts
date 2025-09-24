@@ -1,4 +1,4 @@
-export const config = { runtime: "nodejs" };
+export const runtime = 'nodejs';
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 

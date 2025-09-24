@@ -1,4 +1,4 @@
-export const config = { runtime: "nodejs18.x" };
+export const runtime = 'nodejs';
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import bcrypt from 'bcryptjs';
