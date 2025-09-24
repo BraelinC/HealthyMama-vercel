@@ -1,7 +1,7 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
-import * as schema from "../shared/schema";
+import * as schema from "./schema";
 
 // Vercel automatically provides environment variables - no dotenv needed
 console.log('🔍 [DB ENV DEBUG] Environment check - DATABASE_URL available:', !!process.env.DATABASE_URL);

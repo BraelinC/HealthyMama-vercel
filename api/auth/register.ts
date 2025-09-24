@@ -4,8 +4,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../../server/db';
-import { users } from '../../shared/schema';
-import { insertProfileSchema } from '../../shared/schema';
+import { users, insertProfileSchema } from '../../server/schema';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
